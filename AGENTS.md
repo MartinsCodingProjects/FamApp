@@ -2,7 +2,7 @@
 
 You are working on a private household app for two people (Martin and his wife). **Core goal: notifications arrive reliably and on time, to the minute.** Everything else builds on that.
 
-Language: code, identifiers, comments, docs, specs, commit messages, PRs and issues in **English**. User-facing text (app, web, admin UI) in **German**, kept in one strings file per surface.
+Language: code, identifiers, comments, docs, specs, commit messages, PRs and issues in **English**. User-facing text (app, web, notifications, admin UI) in **German**, all of it in `shared/strings/de.json`.
 
 ---
 
@@ -85,7 +85,8 @@ Details: `BUILDPLAN.md` A6 and A7. Summary:
 | `make setup` | install tools in user space |
 | `make dev` | start backend, worker, admin, fakes locally |
 | `make test` | all locally possible tests (Python, JS, `engine-core`, test vectors) |
-| `make lint` | Ruff, ESLint, ktlint |
+| `make lint` | Ruff, ESLint, ktlint, string-key and token checks |
+| `make tokens` | regenerate token files from `shared/design/tokens.json` |
 | `make e2e` | Playwright against a local instance |
 | `make apk` | CI only |
 
@@ -121,10 +122,21 @@ Details: `BUILDPLAN.md` A6 and A7. Summary:
 - Channel IDs only change by versioning (`urgent_v2`), never by renaming.
 - The `release` branch is only touched by Martin (or by an agent on his explicit instruction).
 
-### Design
-- UI components use values from `theme/tokens.js` only, never hard-coded colors, spacing or font sizes.
+### Design tokens (README 8.2)
+- **Single source: `shared/design/tokens.json`.** Never edit `*.generated.*` files; run `make tokens`.
+- Use **semantic** tokens only (`color.bg.surface`, `color.state.urgent`), never base tokens or hard-coded colors, spacing, radii or font sizes. Applies to the app, the admin UI CSS and Android resources alike.
+- Need a value that does not exist? Add a semantic token in `tokens.json`; do not inline it.
+- Only base components in `app/components/` combine tokens into styles. Screens compose base components.
+
+### UI strings (README 8.4)
+- **Single source: `shared/strings/de.json`.** Applies to app, web, engine notifications, server notifications and admin UI.
+- Code uses keys via `t(key, params)` only. No German string literals in code (lint enforces it).
+- Keys by area (`todo.action.done`). Counts use plural forms, never string concatenation.
+- Server-generated notifications send a key plus parameters, not text.
+- New key → add it to `de.json` in the same PR. Removed usage → remove the key.
+
+### Branding
 - Display name only from `branding.json`.
-- User-facing strings only from the strings file, never inline.
 
 ---
 

@@ -17,9 +17,9 @@ Legend: ✅ decided by Martin · 🟡 proposal; implemented this way unless some
 
 - ✅ Expo (managed workflow with development build), JavaScript instead of TypeScript to start with.
 - ✅ Styling via `StyleSheet`, no CSS.
-- ✅ **Design must be easy to change; design tokens adjustable in one place.**
-  - 🟡 `theme/tokens.js` (colors, spacing, radii, font sizes, shadows) as the single source. Components never use hard-coded values, only tokens.
-  - 🟡 Small set of own base components (`Button`, `Card`, `Text`, `Input`, `Badge`) that use tokens only. A redesign only touches tokens and these components.
+- ✅ **Design system and design tokens managed centrally** (decided 2026-10-23): one source for every surface.
+  - ✅ `shared/design/tokens.json` with base tokens (palette) and semantic tokens (what components use). A generator produces the files for the Expo app, the admin UI (CSS custom properties) and Android resources (notification colors). Details: README 8.2.
+  - 🟡 Small set of own base components (`Button`, `Card`, `Text`, `Input`, `Badge`) as the only place where tokens become styles. Screens compose them. A redesign touches `tokens.json` and at most these components.
 - ✅ **Light and dark:** follows the system by default, changeable per user in the app (System / Light / Dark). Technically two token sets via a theme provider; the choice is synced with the user settings.
 - ✅ **App name not decided yet.** Hence two levels:
   - **Display name** (what users see: app icon, title, notifications, web, admin UI) lives in **one** place: `branding.json` in the repo root. Expo (`app.config.js`), backend, admin templates and texts read it from there. Renaming = change one line and rebuild.
@@ -30,7 +30,9 @@ Legend: ✅ decided by Martin · 🟡 proposal; implemented this way unless some
   - 🟡 Web needs a password login. The Android app keeps pairing code + device token.
   - 🟡 Web is online only.
 - ✅ **Language:** development (code, docs, specs, commits) in English (decided 2026-10-23).
-  - 🟡 User-facing text in app, web and admin UI stays German, kept in one strings file per surface.
+  - ✅ User-facing text stays German.
+  - ✅ **All UI strings in one central place** (decided 2026-10-23): `shared/strings/de.json`, used by the app, the Kotlin engine (notifications), the backend (server notifications, admin UI). Keys instead of text in code, placeholders and plural forms, a small `t()` helper per language, CI checks for missing/unused keys. Server notifications carry key + parameters. Details: README 8.4.
+  - 🟡 Wording changes need a new build/deploy; runtime overrides via the admin UI are a possible later addition.
 
 ## 3. Backend and operations
 

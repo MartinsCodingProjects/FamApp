@@ -20,7 +20,7 @@ The plan is organized for **autonomous work by AI agents**. Martin only steps in
    - **Fake FCM:** accepts wake-ups and records them (tests check "was it woken?")
    - **Fake Google Calendar:** serves events from fixture files, including `syncToken` and `410 Gone`
    - **Controllable clock:** backend and engine get the time only through a time provider. Tests can set "now" and fast-forward (required for quiet hours, nag intervals, levels, DST).
-2. **One command per task** (`Makefile`): `make setup`, `make dev`, `make test`, `make lint`, `make e2e`, `make apk`. Agents and CI use the same commands.
+2. **One command per task** (`Makefile`): `make setup`, `make dev`, `make test`, `make lint`, `make tokens`, `make e2e`, `make apk`. Agents and CI use the same commands.
 3. **Android tested automatically in an emulator.** CI starts an emulator and checks, among other things, Doze (`adb shell dumpsys deviceidle force-idle`), reboot, time and time zone changes, network off, app process killed, notification actions. CI covers most of the test matrix this way. Only what needs real hardware is left for Martin.
 4. **Shared test vectors** in `shared/test-vectors/` (levels, quiet hours, nag times, rotation, RRULE, conflicts). Python, Kotlin and JavaScript test against the same files.
 5. **Spec before code.** Every larger package starts with a short spec under `docs/`. Agents write it themselves based on the README and `docs/decisions.md`. No approval needed.
@@ -178,11 +178,11 @@ Everything that needs accounts, access or clicks in third-party UIs is bundled h
 
 | ID | Work package | Automated acceptance criterion |
 |---|---|---|
-| 1.1 | Repo scaffold: structure, `Makefile`, lint (Ruff, ESLint, ktlint), `branding.json`, issue template; keep `AGENTS.md` and README in sync with the actual layout | `make lint` runs |
+| 1.1 | Repo scaffold: structure, `Makefile`, lint (Ruff, ESLint, ktlint), `branding.json`, issue template; keep `AGENTS.md` and README in sync with the actual layout. **Central strings and tokens:** `shared/strings/de.json` (first keys), `shared/design/tokens.json` (base + semantic, light/dark, initial neutral palette), `tools/` with token generator (JS, CSS, Android XML) and string checks (missing/unused keys, placeholders, German literals in code), string test vectors | `make lint` and `make tokens` run; checks fail on a deliberately broken key or stale generated file |
 | 1.2 | CI: backend tests on SQLite **and** MariaDB (service container, see A7), lint, `pip-audit`, `npm audit`, APK build (signed), emulator job (empty at first) | CI green on the empty project |
 | 1.3 | Dev environment on the home server without Docker and without root (see A6): SQLite, `uv`, `fnm`, fake FCM, time provider in the backend, database layer with dialect modules (A7). Additionally `docker-compose.dev.yml` for machines with Docker (notebook, CI) | `make dev` starts on the home server; fake FCM accepts calls |
-| 1.4 | Backend skeleton: FastAPI, `/api/health`, JSON logging, configuration, Dockerfile, `deploy/docker-compose.yml` (api + worker), app/admin host separation | health test; image builds |
-| 1.5 | Expo project (JavaScript) with an empty local module `famapp-engine`, package name, `branding.json` wired in, German strings file | APK builds; emulator starts the app |
+| 1.4 | Backend skeleton: FastAPI, `/api/health`, JSON logging, configuration, Dockerfile, `deploy/docker-compose.yml` (api + worker), app/admin host separation, Python `t()` helper reading `shared/strings`, admin base template using `tokens.generated.css` | health test; `t()` passes string vectors; image builds |
+| 1.5 | Expo project (JavaScript) with an empty local module `famapp-engine`, package name, `branding.json` wired in, JS `t()` helper and ThemeProvider reading the shared strings and generated tokens; Gradle step copying `de.json` into engine assets | APK builds; emulator starts the app and shows a string from `de.json` |
 | 1.6 | Spec `docs/spec-sync.md` | file exists, covers endpoints, operations, conflicts, error cases |
 | 1.7 | Migrations: `users`, `user_settings`, `devices`, `device_tokens`, `notifications`, `deliveries`, `secrets`, `audit_log`, `conflict_log`, `job_log`, `rev_counter` with `next_rev()` | migration up/down on SQLite and MariaDB in CI |
 | 1.8 | Secret encryption (AES-GCM, `MASTER_KEY`) | round-trip and tampering tests |
@@ -199,7 +199,7 @@ Everything that needs accounts, access or clicks in third-party UIs is bundled h
 | ID | Work package | Automated acceptance criterion |
 |---|---|---|
 | 2.1 | Spec `docs/spec-engine.md` (Room schema, planner, display keys, channels, actions, bridge) | file exists |
-| 2.2 | Module `engine-core` (pure Kotlin, see A6): time provider, test-vector loader, Gradle build with little RAM. In CI additionally the Robolectric setup for `engine-android` | sample vector runs locally on the home server |
+| 2.2 | Module `engine-core` (pure Kotlin, see A6): time provider, test-vector loader, Kotlin `t()` helper (string vectors), Gradle build with little RAM. In CI additionally the Robolectric setup for `engine-android` | sample vector runs locally on the home server |
 | 2.3 | `engine-core`: sync logic (outbox, delta, clock skew, backoff) against an HTTP interface. `engine-android`: Room schema, token storage in the Keystore, wiring to `engine-core` | `engine-core` tests locally against the real dev backend; `engine-android` in CI |
 | 2.4 | **Planner** in `engine-core` (next time, everything due, catch-up, expiry). Setting the alarm (`setAlarmClock`/`setExactAndAllowWhileIdle`) in `engine-android` | planner vectors incl. DST and time zones, locally |
 | 2.5 | Display: channels, stable IDs, `shown_at` + ack, receivers (alarm, boot, time change, update), WorkManager jobs | emulator: display after forced Doze, after reboot, after time zone change, without network |
@@ -245,7 +245,7 @@ Open issues from C1 take priority over new packages.
 | 3.1 | Spec `docs/spec-todos.md`, test vectors for levels, quiet hours, nag times, rotation, RRULE, conflicts | vectors exist and load in all three languages |
 | 3.2 | Backend: migrations (`people`, `categories`, `todos`, `todo_series`, `todo_snoozes`), seed data, sync operations, conflict logic per field group, conflict log | conflict scenarios (completed offline + title changed, delete vs. edit, clock skew) |
 | 3.3 | Backend: activity notifications with batching and quiet-hours collection, explicit urgent incl. the night special case, wake-up on status change of nagging todos | tests with fast-forwarded clock |
-| 3.4 | App: `theme/tokens.js` (light/dark), ThemeProvider, base components, navigation, `repo.js` + `repo.native.js` | component tests, screenshot tests in the emulator |
+| 3.4 | Design system: final semantic token set in `shared/design/tokens.json` (light/dark), base components, navigation, `repo.js` + `repo.native.js`; a hidden "design preview" screen showing all base components and tokens | component tests, screenshot tests in the emulator (light/dark) |
 | 3.5 | Engine: Room tables and sync for todos, people, categories, series, snoozes, settings; bridge functions | JVM tests |
 | 3.6 | App: settings (quiet hours, summary times per weekday, intervals, DND bypass, theme) | emulator: change a setting → second test client sees it |
 | 3.7 | App: todo list, detail, create/edit, complete, dismiss, postpone, "send urgent", level computation in JS | E2E in the emulator |
@@ -261,7 +261,7 @@ Open issues from C1 take priority over new packages.
 ### 👤 C2: Daily-use test and design review (about 1–2 h, in parallel with Run 4)
 
 1. Install the app update on both phones.
-2. Review the **design** from the screenshots and on the device. File change requests as issues ("colors", "spacing" …). Usually only `tokens.js` is affected.
+2. Review the **design** from the screenshots, the design preview screen and on the device; review the **wording** in `shared/strings/de.json`. File change requests as issues ("colors", "spacing", "wording" …), or edit the two files directly. Usually nothing else is affected.
 3. **Test together with his wife** (list in `docs/checkpoint-c2.md`):
    - send urgent todos back and forth, nagging, "Snooze", "Done" on one device stops the other
    - send to "both"
