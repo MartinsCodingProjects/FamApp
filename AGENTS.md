@@ -27,10 +27,10 @@ On contradictions: `docs/decisions.md` (✅) > `README.md` > `BUILDPLAN.md` > `d
 4. The package's acceptance criterion becomes an **automated test**. Test first, then implementation, where it makes sense.
 5. Check locally: `make lint && make test`.
 6. For Android parts: push, trigger CI, read the result with `gh run watch` / `gh run view --log-failed`.
-7. Open a PR (template below), enable auto-merge. Merging into `main` happens when CI is green.
+7. Open a PR (template below), enable auto-merge. Merging into `main` happens when the required check `ci-gate` is green.
 8. Update `docs/progress.md` (in the same PR). Then go straight to the next package.
 
-At the end of a run: write the checkpoint file `docs/checkpoint-cN.md` and stop (see BUILDPLAN Part B).
+At the end of a run: write the checkpoint file `docs/checkpoint-cN.md`, ask Martin to move `release` (issue + note in `docs/progress.md`) and stop (see BUILDPLAN Part B). Never move `release` yourself.
 
 ### PR template
 
@@ -61,7 +61,7 @@ At the end of a run: write the checkpoint file `docs/checkpoint-cN.md` and stop 
 2. User-visible behavior is not covered by the README or decisions.
 3. Something irreversible is about to happen: package name, signing key, a migration that deletes data, changes to `release`.
 4. CI stays red after several serious attempts, or an external service is down.
-5. GitHub Actions free minutes are used up → do not stop; continue with home-server packages (backend, `engine-core`, web) and batch Android changes.
+5. GitHub Actions free minutes are used up (only relevant once the repo is private again after C3) → do not stop; continue with home-server packages (backend, `engine-core`, web) and batch Android changes.
 
 Decide everything else yourself and record it in `docs/assumptions.md` (date, package, assumption, reason).
 
@@ -75,7 +75,7 @@ Details: `BUILDPLAN.md` A6 and A7. Summary:
   - Python via `uv`, Node via `fnm`, JDK via SDKMAN (only for `engine-core`). **No Android SDK here.**
   - Database: SQLite (`DATABASE_URL` unset → `sqlite:///./dev.db`).
   - Gradle: `org.gradle.jvmargs=-Xmx1536m`, daemon with a short idle timeout.
-- **GitHub Actions:** APK build, `engine-android`, Robolectric, emulator E2E, MariaDB tests, Docker image. Use minutes sparingly: emulator suite only on changes under `app/`, batched.
+- **GitHub Actions:** APK build, `engine-android`, Robolectric, emulator E2E, MariaDB tests, Docker image. The repo is **public until C3** (free minutes): emulator suite on every PR touching `app/`. Only `ci-gate` is a required check; use job-level conditions, not workflow-level `paths:` filters, for required jobs.
 - **Ports Martin can see in his browser:** 8000 (API + web build), 5000 (admin UI), 5173 (Expo web dev). Reserve: 3000, 4173, 5174. Internal only: e.g. 9101 fake FCM, 9102 fake Google.
 
 ### Commands (Makefile, once created)
@@ -96,8 +96,11 @@ Details: `BUILDPLAN.md` A6 and A7. Summary:
 
 ### Architecture
 - **The server is the source of truth.** The Android engine only keeps a mirror.
-- **FCM never carries content**, only `{"t":"sync"}`.
-- **The engine owns the local DB exclusively.** JavaScript accesses data only through `data/repo.js`, never a DB directly.
+- **FCM never carries content**, only `{"t":"sync"}`. **High priority only when the device is expected to display something now**; everything else normal priority with a `collapse_key`.
+- **The engine owns the local DB exclusively.** The UI (TypeScript) accesses data only through `data/repo.ts`, never a DB directly.
+- **Native Android config only via Expo config plugins** (`app/plugins/`). Never edit the generated `android/` folder.
+- **Room:** mirror tables may be dropped and re-synced on schema changes; outbox, auth and sync state only via real migrations.
+- **Sync protocol changes keep the previous protocol version working** (protocol version header, minimum app version; clients ignore unknown fields).
 - **Logic belongs in `engine-core`** (pure Kotlin). `engine-android` only connects to Android APIs.
 - **Single-alarm planner:** always exactly one exact alarm for the next time.
 - **Only the server creates recurring instances.**
@@ -108,13 +111,16 @@ Details: `BUILDPLAN.md` A6 and A7. Summary:
 - Only portable SQLAlchemy types, custom UTC `DateTime` type.
 - `rev` only via `next_rev()`, locks only via `db/locks.py`.
 - Raw SQL only in `backend/app/db/dialects/`.
-- Alembic with `render_as_batch=True`. Never destructive migrations without asking.
+- Alembic with `render_as_batch=True`. Migrations are **additive** (expand/contract) so the previous image keeps running; the worker applies them on start. Never destructive migrations without asking.
 - Concurrency tests marked `@pytest.mark.mariadb`.
 
 ### Security
 - **Never request, create or commit production secrets.** No real keys in tests or fixtures.
 - `google-services.json` may be committed; service account keys never.
 - No todo content in logs.
+- **The repo is public until C3:** no personal data, todo contents, real names beyond the docs, IPs or tokens in code, fixtures, issues, PRs or CI logs.
+- The APK signing key exists only in the GitHub Environment `release`. Never change which branches or reviewers that environment allows.
+- Admin host: requests without a valid Cloudflare Access JWT are rejected (only `FAMAPP_DEV=1` disables the check; never set it in deploy files).
 - No public `/docs` or `/openapi.json` endpoints in production.
 
 ### Immutable

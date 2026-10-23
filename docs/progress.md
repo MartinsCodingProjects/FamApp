@@ -12,19 +12,19 @@ Every agent updates this file in the same PR as its work.
 | C0 preparation | in progress | repo created, docs committed; remaining items below |
 | C1 first deployment | open | |
 | C2 daily-use test | open | |
-| C3 wrap-up | open | |
+| C3 wrap-up | open | reminder: make the repo private again |
 
 ## C0 – Martin's tasks (details: BUILDPLAN Part B)
 
 - [x] 1a Create GitHub repo
-- [ ] 1b Agent access, auto-merge, branch protection for `main`
+- [ ] 1b Make repo public (until C3), agent access, auto-merge, branch protection for `main` (required check `ci-gate`), protect `release`
 - [ ] 2 Display-name placeholder and subdomains (`famapp.cowflex.com`, `famapp-admin.cowflex.com`)
-- [ ] 3 Create APK signing key, back it up twice, add as GitHub secret
+- [ ] 3 Create APK signing key, back it up twice, add as secret of GitHub Environment `release` (branch `release` only, reviewer Martin)
 - [ ] 4 Firebase project (`com.cowflex.famapp`), commit `google-services.json`
 - [ ] 5 (optional) Dev Firebase project
 - [ ] 6 Google Cloud: Calendar API, OAuth client
-- [ ] 7 Cloudflare: DNS, WAF skip, Access
-- [ ] 8 Coolify: MariaDB, Compose resource on branch `release`, environment variables
+- [ ] 7 Cloudflare: DNS, WAF skip, Access (note team domain + AUD tag)
+- [ ] 8 Coolify: MariaDB, Compose resource on branch `release`, environment variables (incl. `CF_ACCESS_TEAM_DOMAIN`, `CF_ACCESS_AUD`)
 - [ ] 9 Phones: allow installing unknown apps
 - [ ] 10 Secure GitHub costs
 - [ ] 11 Log in `gh` in code-server

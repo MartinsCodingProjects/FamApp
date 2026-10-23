@@ -1,6 +1,6 @@
 # Decisions
 
-Status: 2026-10-22, all planning questions resolved (translated to English and codename changed to `famapp` on 2026-10-23). This document records what was decided and why. README and BUILDPLAN build on it.
+Status: 2026-10-22, all planning questions resolved (translated to English and codename changed to `famapp` on 2026-10-23). Pre-development review on 2026-10-23 closed the remaining gaps (section 10). This document records what was decided and why. README and BUILDPLAN build on it.
 
 Legend: ✅ decided by Martin · 🟡 proposal; implemented this way unless someone objects
 
@@ -15,7 +15,8 @@ Legend: ✅ decided by Martin · 🟡 proposal; implemented this way unless some
 
 ## 2. Frontend
 
-- ✅ Expo (managed workflow with development build), JavaScript instead of TypeScript to start with.
+- ✅ Expo (managed workflow with development build), **TypeScript** (changed from JavaScript on 2026-10-23: types catch mistakes at the `repo` ↔ Kotlin bridge, switching later would be expensive).
+- ✅ Native Android configuration (manifest entries, receivers, permissions, `FirebaseMessagingService`, Gradle plugins) only via **Expo config plugins**. The generated `android/` folder is never edited by hand (prebuild overwrites it).
 - ✅ Styling via `StyleSheet`, no CSS.
 - ✅ **Design system and design tokens managed centrally** (decided 2026-10-23): one source for every surface.
   - ✅ `shared/design/tokens.json` with base tokens (palette) and semantic tokens (what components use). A generator produces the files for the Expo app, the admin UI (CSS custom properties) and Android resources (notification colors). Details: README 8.2.
@@ -56,10 +57,13 @@ Legend: ✅ decided by Martin · 🟡 proposal; implemented this way unless some
   - **API + web app** (`famapp.cowflex.com`): **proxied**.
   - **Admin UI** (`famapp-admin.cowflex.com`): proxied with Cloudflare Access (GitHub SSO), like Coolify. Plus its own admin login in the backend.
 - ✅ WAF rule "Skip" for the app subdomain (Bot Fight Mode and challenges off), otherwise Cloudflare blocks the app. Real client IP from `CF-Connecting-IP`, trusted only for requests from Cloudflare IP ranges.
+- ✅ **Client IP behind Traefik** (decided 2026-10-23): the request chain is Cloudflare → Coolify's Traefik → app, so the app sees Traefik's address. The app trusts only Traefik, takes the **rightmost** `X-Forwarded-For` entry (the address that connected to Traefik); if it lies in Cloudflare's IP ranges, the client IP is `CF-Connecting-IP`, otherwise that entry. The shared Traefik config stays untouched.
+- ✅ **Cloudflare Access must not be bypassable** (decided 2026-10-23): because the VPS IP is public, anyone could reach the admin host directly. The backend therefore validates the `Cf-Access-Jwt-Assertion` header (signature against the team's public keys, audience tag) on every admin-host request; missing or invalid → 404. Then password + TOTP as before.
 
 ### Security
 
-- **App (Android):** pairing code (one-time, valid 10 min, generated in the admin UI or on a paired device) → refresh token per device in the Android Keystore, short-lived access token (15 min). Refresh tokens rotate. If an old token is reused, the device is locked.
+- **App (Android):** pairing code (one-time, valid 10 min, generated in the admin UI or on a paired device) → refresh token per device in the Android Keystore, short-lived access token (15 min). Refresh tokens rotate.
+  - ✅ **Generous reuse rule** (decided 2026-10-23): a device must never lock itself out through lost connections, dead zones or long flight mode. Refresh tokens do **not** expire through inactivity. After a rotation the **previous token stays valid until the new one has been used once** (no time limit), so a lost refresh response is simply retried. The device is locked only if an old token shows up **after** its successor was already used (two diverging token chains = real theft signal). Tests cover: lost response + retry, weeks offline, true theft.
 - **Web (both users):** password (Argon2id) plus second factor.
   - ✅ **Second factor = approval in the app:** after the password, all of the user's paired devices show "Approve browser login?" with Yes/No (via FCM wake-up, so it works with the app closed). The browser waits up to 2 min.
   - 🟡 The notification shows the browser, approximate location (from the IP) and a two-digit code that is also shown in the browser, so nobody approves a stranger's attempt by accident.
@@ -81,6 +85,7 @@ Legend: ✅ decided by Martin · 🟡 proposal; implemented this way unless some
   1. DB credentials (`DATABASE_URL`)
   2. `MASTER_KEY` (encrypts all other secrets in the DB)
   3. `SETUP_TOKEN` (only for the first wizard run, useless afterwards)
+- ✅ Plus two **non-secret** values, needed before the wizard can be protected: `CF_ACCESS_TEAM_DOMAIN` and `CF_ACCESS_AUD` (audience tag of the Access application). Without them the admin host refuses every request, unless the dev flag `FAMAPP_DEV=1` is set (never in production).
 - 🟡 **Everything else via the wizard**, encrypted in the DB (AES-GCM with `MASTER_KEY`): Firebase service account (JSON upload), Google OAuth client, Google calendar connection (OAuth login in the wizard), user accounts, time zone, default notification times.
 - 🟡 Flow: first start → wizard reachable only with `SETUP_TOKEN` → create admin account → enter and test secrets (test push, test calendar fetch) → wizard locks itself. Secrets can be changed later in the admin UI but are never shown in plain text again.
 
@@ -100,7 +105,8 @@ Legend: ✅ decided by Martin · 🟡 proposal; implemented this way unless some
 
 ## 4. Push
 
-- ✅ FCM only as a wake-up call (data message without content, high priority).
+- ✅ FCM only as a wake-up call (data message without content).
+- ✅ **Priority rule** (decided 2026-10-23): FCM may downgrade apps whose high-priority messages do not lead to visible notifications. Therefore **high priority only when the device is expected to show something now**: explicit urgent (new), login approval, activity notification due now, and watchdog retries for those. Everything else (status change → cancel nagging, settings/calendar changes, watchdog retries for summaries, heartbeat, test wake-ups without display) goes out as **normal priority** with a `collapse_key`.
 
 ## 5. Notifications
 
@@ -120,7 +126,8 @@ All times, intervals and switches in this section are **configurable per user in
 |---|---|---|---|
 | **Summary** | local exact alarm at configured times; content built locally at display time | high | server watchdog checks the ack; wake-up after 15 min |
 | **Urgent (explicit)** | immediately via FCM wake-up → sync → display | own channel, bypass DND (configurable) | repeats (every 15 min) until done. During quiet hours only once when newly created, no nagging. |
-| **Urgent (time-based)** | local alarm when a horizon todo becomes "urgent" | high | repeats (hourly) until done or postponed. Not during quiet hours. |
+| **Scheduled reminder** | local alarm at `due_at` (optional lead time) | high | see "Scheduled todos" below |
+| **Urgent (time-based)** | local alarm when a horizon todo becomes "urgent", or a scheduled todo is past `due_at` | high | **one combined notification per user** for all time-based urgent/overdue todos, re-posted hourly until none are left. Not during quiet hours. |
 | **Normal** | FCM wake-up, may be batched | normal | collected during quiet hours, then delivered as one notification |
 | **Calendar** | local alarms from calendar data | normal | evening before, morning of, start time (rules below) |
 
@@ -144,13 +151,18 @@ All times, intervals and switches in this section are **configurable per user in
 - ✅ Sent to "both": once one completes it, nagging stops for both.
 - ✅ **Snooze** for explicitly urgent todos: pauses nagging (default 30 min, configurable). Afterwards it continues until done.
 - 🟡 An explicitly urgent message is always a todo (kind `immediate`). Actions in the notification: "Done" and "Snooze"; for time-based ones "Done" and "Postpone".
-- 🟡 Technically the engine sets the next exact alarm for every open nagging todo (respecting quiet hours and snooze). When it is completed on one device, an FCM wake-up goes to all other devices, which cancel the alarm. Without a network it keeps nagging until sync brings the status. Snooze applies per user (synced so it pauses on all of that user's devices).
+- ✅ **Time-based nagging is combined** (decided 2026-10-23): all time-based urgent and overdue todos of a user share **one** notification ("3 fällige Todos: …", up to 3 titles, overdue first), re-posted hourly with the same ID. Actions open the list; "Done"/"Postpone" per todo happen in the app. Explicitly urgent todos stay individual notifications (every 15 min, with "Done"/"Snooze").
+- 🟡 Technically the planner includes the next nag time of every open nagging todo in its single alarm (respecting quiet hours and snooze). When it is completed on one device, an FCM wake-up goes to all other devices, which cancel the alarm. Without a network it keeps nagging until sync brings the status. Snooze applies per user (synced so it pauses on all of that user's devices).
 - 🟡 DND bypass: own channel with `setBypassDnd(true)`. Android requires a one-time "Do Not Disturb access" grant; the app requests it in the setup flow.
 
 ### Normal
 
 - 🟡 Normal notifications during quiet hours are collected and shown as **one** notification at the start of active time ("Since 22:00: 4 changes").
 - 🟡 Outside quiet hours: several changes by the same person within 2 min are batched.
+- ✅ **Triggers** (decided 2026-10-23): only two actions of the other person create an activity notification for me:
+  1. a new todo assigned to me or to both,
+  2. a todo assigned to me or to both, or created by me, is completed or dismissed.
+  Edits and deletions do not notify (visible in the list and the admin activity log).
 
 ### Calendar
 
@@ -172,6 +184,14 @@ All times, intervals and switches in this section are **configurable per user in
 - ✅ Categories optional. Initial ideas: Wohnung (home), Soziales (social), Kalender (calendar), Besorgung (errands).
 - ✅ Assignee: Martin, his wife, or both.
 - ✅ "For whom": people, including their child.
+- ✅ **Visibility** (decided 2026-10-23): both users see every todo, regardless of assignee. The list offers filters (mine / both / the other's). Sync therefore does not filter todos per user.
+- ✅ **Undo** (decided 2026-10-23): after "Done" from a notification, the notification turns into "Erledigt – Rückgängig" for 30 s. Done and dismissed todos can be reopened from the app (status field group). Reopening a series instance removes the next instance the server created for it, as long as that one is still untouched; otherwise both stay open.
+
+### Scheduled todos
+
+- ✅ (decided 2026-10-23) A notification at `due_at`; optional lead time per todo (none / 15 min / 1 h / 1 day; default none) as an additional earlier notification.
+- ✅ If not done at `due_at`, the todo becomes `overdue` and joins the combined time-based nag notification (hourly) until done or postponed.
+- 🟡 A `due_at` or lead time inside quiet hours: the reminder is still shown once at that time (the user picked the time explicitly), without DND bypass; nagging only starts when active time begins.
 
 ### Data model
 
@@ -210,7 +230,8 @@ categories   (id, slug, name, color, icon, sort_order, active)
 | < 1 week | `urgent` (time-based, nags hourly) |
 | past | `overdue` (keeps nagging hourly) |
 | kind `someday` | someday (never changes) |
-| kind `scheduled` | scheduled; "today" on the day itself |
+| kind `scheduled` | scheduled; "today" on the day itself; `overdue` after `due_at` |
+| series instance | relative thresholds, see "Recurring todos" |
 
 - 🟡 Thresholds configurable centrally (admin UI).
 - 🟡 "Postpone" action: sets a new target date (1–4 weeks / 1–3 months from today), which also ends nagging.
@@ -242,7 +263,9 @@ todo_series
 - 🟡 Rotating with stacked calendar-rule instances: the new instance goes to the person who did not complete the last **completed** instance.
 - 🟡 Dismissing an instance counts like completing it (the next instance is created) but does not count for rotation.
 - 🟡 Only the server creates instances. If completed offline, the next instance is created on the next sync, based on the corrected completion time.
-- 🟡 Every instance gets a `target_date` and moves through the normal levels (mid term → urgent → overdue). Whether a series creates horizon todos or scheduled todos (fixed time) is part of the template.
+- 🟡 Every instance gets a `target_date` and moves through the levels (mid term → urgent → overdue). Whether a series creates horizon todos or scheduled todos (fixed time) is part of the template.
+- ✅ **Relative thresholds for series instances** (decided 2026-10-23): with the absolute "< 1 week" rule, "every 2 weeks" would nag for a full week each cycle. A series instance becomes `urgent` only in the **last 25 % of its interval**, at least 1 day before `target_date`. 🟡 Capped at the normal 1-week threshold, so "every 6 months" does not nag for 6 weeks. Before that it is `mid_term` (or `long_term` if > 4 weeks away). Covered by `shared/test-vectors/levels.json`.
+- ✅ **Editing a series** (decided 2026-10-23): template changes apply to future instances and to the open instance, unless that instance was edited individually. Pause: no new instances, the open one stays. Delete: the app asks whether the open instance should be deleted too.
 
 ### Categories
 
@@ -257,7 +280,8 @@ todo_series
 - ✅ Moving away from Google later should be possible (CalDAV).
 - ✅ Google Calendar API, read only (`calendar.readonly`), one OAuth login with Martin's account in the setup wizard. OAuth app set to "In production" without verification (otherwise tokens expire after 7 days).
 - ✅ Backend interface `CalendarSource` (`google_api`, later `caldav`). The app only knows `calendar_events`.
-- 🟡 Incremental fetch every 5 min via `syncToken`. Calendar events go through the normal rev sync.
+- 🟡 Incremental fetch every 5 min via `syncToken`. Calendar events go through the normal rev sync. (Google does not allow `timeMin`/`timeMax` together with `syncToken`; the server applies its time window itself.)
+- ✅ **Local window on the phone** (decided 2026-10-23): −1 to +3 months, so agenda, week and month views work fully offline. The server keeps −1 to +12 months. Views do not navigate beyond the local window in the MVP.
 
 ## 8. Offline and conflicts
 
@@ -293,15 +317,15 @@ Recurring todos: only the server creates new instances, so no duplicates arise o
 🟡 **The Kotlin engine owns the local database and sync exclusively.** The UI reads and writes through engine functions. Only one piece of code writes to the DB; there are no competing schemas and migrations between JS and Kotlin.
 
 ```
-UI (Expo, JavaScript)
-  └─ data/repo.js          ← shared interface: listTodos(), saveTodo(), completeTodo() …
-        ├─ repo.native.js  → Kotlin engine (local DB, outbox, sync)        [Android]
-        └─ repo.web.js     → REST API directly                             [browser]
+UI (Expo, TypeScript)
+  └─ data/repo.ts          ← shared interface: listTodos(), saveTodo(), completeTodo() …
+        ├─ repo.native.ts  → Kotlin engine (local DB, outbox, sync)        [Android]
+        └─ repo.web.ts     → REST API directly                             [browser]
 
 Kotlin engine "famapp-engine"
   ├─ engine-core (pure Kotlin): planner, levels, quiet hours, nag times, sync and conflict logic
   └─ engine-android:
-       ├─ Room DB: todos, series (read-only), categories, people, calendar_events (14 days),
+       ├─ Room DB: todos, series (read-only), categories, people, calendar_events (−1 to +3 months),
        │           notifications, deliveries, settings, todo_snoozes, outbox, sync_state
        ├─ alarm: the one exact alarm, WorkManager jobs
        ├─ display: channels, batching, actions "Done"/"Snooze"/"Postpone"
@@ -309,7 +333,51 @@ Kotlin engine "famapp-engine"
 ```
 
 - The UI does not know whether it runs on Android or in the browser; only the `repo` implementation differs.
-- Estimated size of the Kotlin engine: 1,500–2,000 lines.
+- Estimated size of the Kotlin engine: 4,000–6,000 lines (sync, Room, planner, display, receivers, bridge). Work packages are sized accordingly.
+
+---
+
+## 10. Pre-development review (2026-10-23)
+
+Gaps found before development started, decided by Martin. Decisions that change an earlier section are recorded there as well.
+
+### Delivery and reliability
+
+- ✅ **Watchdog covers all classes.** The server computes the expected display keys not only for summaries but also for nags (explicit and combined time-based), scheduled reminders and calendar notifications, with the same rules as the engine (shared test vectors). Missing ack → wake-up, then "late/missing". An explicit urgent todo is displayed under `nag:<todo-id>`; its first display gets the 2/10/60 min retry schedule. This makes "no lost notification" measurable.
+  - 🟡 Delivery records are kept per repetition: the Android notification ID comes from the base key (`nag:<todo-id>`), the delivery key adds the planned minute (`nag:<todo-id>@2026-11-02T14:15Z`).
+- ✅ **Server monitoring: device-side only.** No external monitoring service. If the device **has network but sync fails** for 3 h outside quiet hours, the engine shows a local notification "Server nicht erreichbar" (once, then again after 24 h). Flight mode or dead zones (no network) never trigger it.
+- ✅ **Offline banner in the app** (decided 2026-10-23): whenever the app cannot reach the server, a small banner is visible on every screen, including while creating or editing todos, so it is clear that changes are only stored on the phone for now.
+  - Shown as soon as the last sync attempt failed (no network **or** server unreachable), hidden after the next successful sync. No delay, no 3 h threshold (that applies only to the system notification).
+  - Text (German, in `de.json`): "Offline – Änderungen werden gespeichert und später synchronisiert", plus the number of unsent changes if there are any ("3 Änderungen noch nicht synchronisiert").
+  - 🟡 Two wordings: no network → "Offline"; network available but server unreachable → "Server nicht erreichbar". Same banner, same behavior.
+  - 🟡 Not dismissible; small and unobtrusive (one line, semantic token `color.state.offline`), does not block editing.
+  - Web (online only): the same banner, but there editing is blocked until the server is reachable again, because the web app has no outbox.
+- ✅ **The outbox never loses changes** (decided 2026-10-23): outbox entries never expire and are never dropped, however long the server is unreachable. They are only removed after the server has confirmed them. They survive app restarts, reboots, app updates and Room schema changes.
+  - 🟡 If the server **rejects** an entry permanently (validation error, not a network error), it is not retried forever and not silently deleted: it is marked "failed", the queue continues with the next entry, and the app shows the affected todo with "Änderung konnte nicht gespeichert werden" plus "Erneut versuchen" / "Verwerfen". Failures are also logged in the admin UI.
+- ✅ **"Noch nicht gesendet" marker** (decided 2026-10-23): a todo whose changes are still in the outbox shows a small marker in the list and the detail view. For an explicitly urgent todo sent to the other person the marker is prominent ("Noch nicht gesendet – {name} wurde noch nicht benachrichtigt"), so the sender knows to call instead. The marker disappears once the server has confirmed the change.
+  - The "Server nicht erreichbar" system notification adds: "Dringende Todos werden erst zugestellt, wenn der Server wieder erreichbar ist." if urgent todos are waiting in the outbox.
+- ✅ **Alarm type: decided at C1.** The engine implements both `setAlarmClock()` (never delayed, but status-bar icon, becomes the system's "next alarm" and ends DND schedules early) and `setExactAndAllowWhileIdle()` (no side effects, at most about one alarm per 9 min in Doze, which the single-alarm planner rarely hits). Switchable via an engine setting. Default until C1: `setAlarmClock()` for high-priority entries. At C1 Martin picks the default after the observation week.
+- ✅ **Plan B foreground service: specify now, build only if needed.** Documented in `docs/spec-engine.md` as a `specialUse` foreground service (allowed outside the Play Store; `dataSync` is limited to 6 h per day since Android 15) with a silent permanent notification, opt-in per device. Built only if C1 or the observation week shows misses.
+- ✅ **Backups stay at C3** (unchanged). Accepted risk: data from daily use during C2/Run 4 is unprotected until then.
+
+### Deployment and versions
+
+- ✅ **Migrations: the worker migrates, forward-only.** On start the worker runs `alembic upgrade head` under a DB lock before starting the scheduler. `api` reports `/api/health` as "not ready" (503) until the schema matches its code. Migrations are **additive** (expand/contract: add first, remove in a later release), so a bad release can be rolled back by redeploying the previous image. Destructive steps still need Martin's approval.
+- ✅ **App/server version compatibility:**
+  - every app request carries a protocol version header; the server supports the current and the previous protocol version,
+  - the client ignores unknown fields and tables,
+  - the server knows a minimum supported app version and refuses older ones with a clear error shown in the app,
+  - the server knows the latest app version (from the `release` build) and the app shows "Update verfügbar" (also visible in the admin UI per device).
+- ✅ **Room schema on the phone:** mirror tables may be dropped and fully re-synced on a schema change. Outbox, auth and sync-state tables only get real migrations and are never dropped. Tested in CI.
+- ✅ **No development builds on the phones.** The phones only run signed release APKs. Live reload only in the emulator (notebook) or Expo web. No separate `.dev` app ID.
+- ✅ **Only Martin moves `release`.** At the end of a run the agent writes the checkpoint file and asks Martin (issue + note in `docs/progress.md`) to move `release`.
+
+### CI and GitHub
+
+- ✅ **The repository is public during development** so GitHub Actions minutes are free and the emulator suite can run on every PR that touches `app/`. **Reminder: make it private again at C3** (item in the C3 checklist). Consequences: no secrets, personal data or todo contents in the repo, issues or logs; `google-services.json` is public (acceptable, the key is restricted to the package).
+- ✅ **One required check:** an always-running job `ci-gate` that depends on all other jobs and treats skipped jobs as OK. Branch protection requires only `ci-gate`, so path filters never block a merge.
+- ✅ **Signing key only in a GitHub Environment `release`**, restricted to the `release` branch, with Martin as required reviewer. PR and `main` builds are debug-signed and only exist as CI artifacts. Workflows from forks never get secrets.
+- ✅ Agents use **Martin's `gh` login** in code-server (no separate token). Accepted risk: agents technically have Martin's GitHub rights; the rules in `AGENTS.md` (never touch `release`, branch protection or other repos) apply.
 
 ---
 

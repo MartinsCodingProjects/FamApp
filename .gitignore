@@ -7,7 +7,7 @@ __pycache__/
 .coverage
 htmlcov/
 
-# Datenbanken (Entwicklung)
+# Databases (development)
 *.db
 *.db-journal
 *.sqlite
@@ -25,7 +25,7 @@ local.properties
 *.keystore
 *.jks
 
-# Secrets – nie einchecken
+# Secrets – never commit
 .env
 .env.*
 !.env.example
