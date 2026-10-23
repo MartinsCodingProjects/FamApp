@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Datenbanken (Entwicklung)
+*.db
+*.db-journal
+*.sqlite
+
+# Node / Expo
+node_modules/
+.expo/
+dist/
+web-build/
+
+# Android / Gradle
+.gradle/
+build/
+local.properties
+*.keystore
+*.jks
+
+# Secrets – nie einchecken
+.env
+.env.*
+!.env.example
+*service-account*.json
+*-firebase-adminsdk-*.json
+
+# Editor / System
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
