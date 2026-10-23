@@ -43,8 +43,10 @@ An agent stops **only** if:
 
 1. access, an account or a secret is missing that only Martin can create,
 2. a decision is needed that changes user-visible behavior and is not covered by the README or decisions,
-3. something irreversible is about to happen (package name, a migration that deletes data, signing key),
+3. something irreversible is about to happen (package name, a migration that deletes data, signing key, changes to `release`),
 4. CI stays red after several serious attempts, or an external service is down.
+
+Not a reason to stop: GitHub Actions minutes used up (only possible once the repo is private again after C3); see A6.
 
 Everything else the agent decides itself and records in `docs/assumptions.md`. Martin can review the assumptions at the next checkpoint and have them corrected.
 
@@ -56,25 +58,9 @@ Everything else the agent decides itself and records in `docs/assumptions.md`. M
 - **One required check `ci-gate`:** an always-running job that depends on all other jobs and accepts skipped ones. Branch protection requires only this job, so path filters never block a merge.
 - Progress is visible in the repo: checkboxes in Part B (status), `docs/last-session.md` (handover from the previous session, blockers), `docs/session-history.md` (archive) plus PR history.
 
-### A5. Additions to the repository layout (README section 12)
+### A5. Repository layout
 
-```
-├─ AGENTS.md                rules for agents (CLAUDE.md points here)
-├─ Makefile                 setup, dev, test, lint, e2e, apk
-├─ docker-compose.dev.yml   local environment for machines with Docker
-├─ dev/
-│  ├─ fake-fcm/
-│  └─ fake-gcal/            with fixtures
-├─ docs/
-│  ├─ last-session.md       handover from the previous session (status: BUILDPLAN Part B)
-│  ├─ session-history.md    archive of all handovers, newest first
-│  ├─ assumptions.md        decisions made by agents
-│  ├─ decisions.md          decision log with rationale
-│  └─ spec-*.md             specifications
-└─ .github/
-   ├─ workflows/            CI incl. emulator tests, APK build
-   └─ ISSUE_TEMPLATE/       bug report for the bug loop
-```
+One place only: README section 12 (incl. `AGENTS.md`, `Makefile`, `dev/` fakes, `docs/` files, `.github/`). Keep it in sync with the actual layout (sub-task 1.1.12).
 
 ### A6. Where work happens: home server, CI, notebook
 
@@ -163,7 +149,7 @@ If something shows up only on MariaDB, add a test case so CI catches it in the f
 | Marker | Meaning |
 |---|---|
 | `- [ ]` | open |
-| `- [ ] 🚧` | in progress (add your branch: `🚧 pkg/1.4-backend-skeleton`); remove 🚧 when ticking |
+| `- [ ] 🚧` | in progress (add your branch: `🚧 pkg/1.4-backend-skeleton`); remove 🚧 when ticking. `main` only changes through PRs, so set the marker in the branch's first commit and open the PR as a **draft** right away; the draft PR is what makes the claim visible |
 | `- [x]` | done; packages also get the PR number (`· PR #12`) |
 | `- [ ] ⏸` | blocked; the reason is in `docs/last-session.md` → Open blockers |
 
@@ -197,13 +183,13 @@ C0 contains **only** what Run 1 cannot start without. Everything else Martin doe
 Not needed: subdomains are decided (`docs/decisions.md`); the display name is open but not blocking, so 1.1 uses a placeholder in `branding.json` and records it in `docs/assumptions.md`.
 
 - [x] **C0.1a** Create GitHub repo
-- [ ] **C0.1b** GitHub repo: **make it public** (until C3), enable auto-merge, protect `main` via a **ruleset** (require PR, required status check `ci-gate`, entered by name; it does not exist until the first PR)
+- [ ] **C0.1b** GitHub repo: **make it public** (until C3), enable auto-merge, protect `main` via a **ruleset** (require PR with **0 required approvals**, since agents open PRs under Martin's account and nobody else can approve; required status check `ci-gate`, entered by name; it does not exist until the first PR)
   *Blocks:* 1.2 CI incl. emulator job needs free minutes; auto-merge needs a required check.
-- [ ] **C0.2** In the code-server container: `gh` logged in with a token that can push and open PRs: Contents, Pull requests, Issues, **Workflows** (to push `.github/workflows/`) and Actions (read/write)
+- [ ] **C0.2** In the code-server container: `gh` logged in with a token of Martin's account (fine-grained, limited to this repo; `docs/decisions.md` section 10) that can push and open PRs: Contents, Pull requests, Issues, **Workflows** (to push `.github/workflows/`) and Actions (read/write)
   *Blocks:* every package needs PRs; 1.2 needs to push workflows and read CI runs.
 - [ ] **C0.3** (agent) Confirmed: the agent pushed a branch with a workflow file, opened a PR and read its CI run. Done as part of 1.1.
 
-**Done when:** C0.1b–C0.3 are ticked.
+**Done when:** C0.1b and C0.2 are ticked; then Run 1 starts. C0.3 is ticked by the agent in 1.1.2 and is not a precondition.
 
 ### 👤 M-tasks: Martin, in parallel with the runs
 
@@ -240,14 +226,14 @@ Run 1 notes M1 under Open blockers in `docs/last-session.md` if it is still miss
 
 *Acceptance (automated):* `make lint` and `make tokens` run; checks fail on a deliberately broken key or stale generated file.
 
-- [ ] 1.1.1 Directory skeleton per README 12 and A5 (`backend/`, `app/`, `shared/`, `tools/`, `dev/`, `deploy/`, `docs/`), `.gitignore` (`dev.db`, build output, key/keystore patterns), `.editorconfig`
+- [ ] 1.1.1 Directory skeleton per README 12 (`backend/`, `app/`, `shared/`, `tools/`, `dev/`, `deploy/`, `docs/`), `.gitignore` (`dev.db`, build output, key/keystore patterns), `.editorconfig`
 - [ ] 1.1.2 Minimal CI workflow `.github/workflows/ci.yml` with a lint job and the `ci-gate` job, so this first PR can satisfy the required check (1.2 extends it); confirms C0.3
 - [ ] 1.1.3 `branding.json` with a placeholder display name, short name, icon color; placeholder recorded in `docs/assumptions.md`
 - [ ] 1.1.4 `Makefile` with all targets from `AGENTS.md` (`setup`, `dev`, `test`, `lint`, `tokens`, `e2e`, `apk`); targets that are not built yet print which package adds them
 - [ ] 1.1.5 Lint configs: Ruff, ESLint (flat config), ktlint; all wired into `make lint`
 - [ ] 1.1.6 `shared/strings/de.json` with the first keys and the key naming convention (by area, plural forms) documented in a comment file or README section
 - [ ] 1.1.7 `shared/design/tokens.json`: base + semantic tokens, light/dark, initial neutral palette (incl. `color.state.urgent`, `color.state.offline`)
-- [ ] 1.1.8 Token generator in `tools/` → JS, CSS (`tokens.generated.css`), Android XML; `make tokens`; a check mode that fails on stale generated files, run by `make lint`
+- [ ] 1.1.8 Token generator in `tools/` → TS (`tokens.generated.ts`), CSS (`tokens.generated.css`), Android XML (`colors_generated.xml`); `make tokens`; a check mode that fails on stale generated files, run by `make lint`
 - [ ] 1.1.9 String checks in `tools/`: missing/unused keys, placeholder mismatch, German literals in code; run by `make lint`
 - [ ] 1.1.10 String test vectors in `shared/test-vectors/strings/` (placeholders, plurals, missing key behavior), used by the `t()` helpers in 1.4, 1.5 and 2.2
 - [ ] 1.1.11 Issue templates (bug report per the bug loop, question) and labels `bug`, `question`
@@ -267,7 +253,7 @@ Run 1 notes M1 under Open blockers in `docs/last-session.md` if it is still miss
 - [ ] 1.2.6 Audits: `pip-audit`, `npm audit` (fail level recorded in `docs/assumptions.md`)
 - [ ] 1.2.7 Architecture checks in `tools/`, run by `make lint`: raw SQL only in `backend/app/db/dialects/`, no direct clock calls in logic code, no DB access from JS
 - [ ] 1.2.8 APK build job: debug-signed on PRs and `main`, APK as CI artifact (skipped until 1.5 creates the Expo project)
-- [ ] 1.2.9 Release-signing workflow: runs only on `release`, inside Environment `release`; defines the signing secret names; fork PRs never get secrets
+- [ ] 1.2.9 Release-signing workflow: runs only on `release`, inside Environment `release`; defines the signing secret names; fork PRs never get secrets; `versionCode` strictly increasing (e.g. from the run number); the app version is defined once in the repo and read by both the APK build and the backend (= "latest app version", README 7); signed APK attached to a GitHub Release
 - [ ] 1.2.10 `docs/release-signing.md`: how Martin creates the key, backs it up twice and adds the secrets (input for M3)
 - [ ] 1.2.11 Emulator job (KVM on standard runners), empty suite, only when `app/` changed
 - [ ] 1.2.12 `ci-gate` job: `if: always()`, needs every job, fails on `failure`/`cancelled`, accepts `skipped`
@@ -297,8 +283,8 @@ Run 1 notes M1 under Open blockers in `docs/last-session.md` if it is still miss
 - [ ] 1.4.1 Configuration (Pydantic settings): `DATABASE_URL`, `MASTER_KEY`, `SETUP_TOKEN`, `CF_ACCESS_TEAM_DOMAIN`, `CF_ACCESS_AUD`, `FAMAPP_DEV`, host names; fail fast on missing values outside dev
 - [ ] 1.4.2 JSON logging with request ID; no todo content in logs
 - [ ] 1.4.3 FastAPI app factory with app/admin **host separation** (dev: admin on port 5000); no `/docs` or `/openapi.json` in production
-- [ ] 1.4.4 Alembic (`render_as_batch=True`, empty baseline) and a "schema at head" check
-- [ ] 1.4.5 `/api/health`: 503 until the schema matches the code, 200 afterwards
+- [ ] 1.4.4 Alembic (`render_as_batch=True`, empty baseline) and a schema check: DB at the code's head revision or a descendant of it (so the previous image keeps running after a migration)
+- [ ] 1.4.5 `/api/health`: 503 until the schema check from 1.4.4 passes, 200 afterwards
 - [ ] 1.4.6 Worker entrypoint: runs migrations under the DB lock on start, then starts the (still empty) scheduler
 - [ ] 1.4.7 Cloudflare Access JWT check on the admin host (team keys fetched and cached, audience tag checked, 404 on missing/invalid; off only with `FAMAPP_DEV=1`); tests with locally signed tokens and a fake key set
 - [ ] 1.4.8 Python `t()` helper reading `shared/strings`, passing the string vectors
@@ -343,11 +329,11 @@ Run 1 notes M1 under Open blockers in `docs/last-session.md` if it is still miss
 
 - [ ] 1.7.1 `rev_counter` and `next_rev()` per dialect (MariaDB `LAST_INSERT_ID(value+1)`, SQLite `UPDATE … RETURNING`); concurrency test marked `mariadb`
 - [ ] 1.7.2 Common columns for synced tables (`id`, `rev`, `created_at`, `updated_at`, `deleted_at`)
-- [ ] 1.7.3 `users`, `user_settings` (base fields; 3.2 extends them)
+- [ ] 1.7.3 `users` (incl. time zone), `user_settings` (base fields incl. quiet hours per weekday, needed by 2.9; 3.2 extends them)
 - [ ] 1.7.4 `devices` (incl. app version, last sync, `device_status`), `device_tokens`
 - [ ] 1.7.5 `notifications`, `deliveries`
 - [ ] 1.7.6 `secrets`, `audit_log`, `conflict_log`, `job_log`
-- [ ] 1.7.7 Up/down test for every migration on both databases; check that flags destructive operations (A7: additive only)
+- [ ] 1.7.7 Up/down test for every migration on both databases (down is never run in production); check that flags destructive operations (A7: additive only)
 - [ ] **1.7 done** · PR:
 
 #### 1.8 Secret encryption
@@ -365,7 +351,7 @@ Run 1 notes M1 under Open blockers in `docs/last-session.md` if it is still miss
 
 - [ ] 1.9.1 Wizard state and access: only with `SETUP_TOKEN` (constant-time compare, rate limited), unreachable after lock
 - [ ] 1.9.2 Step admin account: password (Argon2id) + TOTP enrolment with confirmation code
-- [ ] 1.9.3 Step Firebase service account: upload, validate JSON, store encrypted (the test-push button follows in 2.8)
+- [ ] 1.9.3 Step Firebase service account: upload, validate JSON, store encrypted (the FCM dry-run check follows in 2.8)
 - [ ] 1.9.4 Step second account: name, time zone, default times
 - [ ] 1.9.5 Lock the wizard; admin login with password + TOTP
 - [ ] 1.9.6 All texts in `de.json`, templates use semantic tokens only
@@ -376,7 +362,7 @@ Run 1 notes M1 under Open blockers in `docs/last-session.md` if it is still miss
 
 *Acceptance (automated):* tests: lost refresh response + retry, weeks offline, real token theft locks; spoofed `CF-Connecting-IP` from a non-Cloudflare address is ignored.
 
-- [ ] 1.10.1 Pairing codes: one-time, valid 10 min, stored hashed; created via admin CLI for now (admin UI page in 2.11)
+- [ ] 1.10.1 Pairing codes: one-time, valid 10 min, stored hashed, bound to one user; created via admin CLI for now (admin UI page in 2.11, on a paired device in 1.10.10 / 2.6.7)
 - [ ] 1.10.2 Pairing endpoint: creates the device, returns refresh + access token
 - [ ] 1.10.3 Access token (15 min) and the auth dependency for app endpoints
 - [ ] 1.10.4 Refresh rotation with the **generous reuse rule** (decisions section 3): previous token valid until the successor is used; an old token after that locks the device
@@ -385,6 +371,7 @@ Run 1 notes M1 under Open blockers in `docs/last-session.md` if it is still miss
 - [ ] 1.10.7 Rate limits and lockout on pairing, refresh and login, keyed by client IP
 - [ ] 1.10.8 Audit log for pairing, rotation anomalies, revocation
 - [ ] 1.10.9 Acceptance tests: lost response + retry, weeks offline, theft locks, spoofed header ignored
+- [ ] 1.10.10 Endpoint for a paired device to create a pairing code for its own user (README 9; rate limited, audit log)
 - [ ] **1.10 done** · PR:
 
 #### 1.11 Sync endpoints
@@ -486,6 +473,7 @@ Run 1 notes M1 under Open blockers in `docs/last-session.md` if it is still miss
 - [ ] 2.6.4 Setup flow: notification permission, exact alarms (`USE_EXACT_ALARM`), battery optimization, Samsung hints, auto-revoke
 - [ ] 2.6.5 All texts in `de.json`; screens use base components and semantic tokens
 - [ ] 2.6.6 Emulator test: pairing against the dev backend, status visible
+- [ ] 2.6.7 Show a pairing code for a new device of the same user (endpoint 1.10.10)
 - [ ] **2.6 done** · PR:
 
 #### 2.7 Worker and job locks
@@ -496,6 +484,7 @@ Run 1 notes M1 under Open blockers in `docs/last-session.md` if it is still miss
 - [ ] 2.7.2 DB lock per job via `db/locks.py` against double execution
 - [ ] 2.7.3 `job_log` entries (start, end, duration, error)
 - [ ] 2.7.4 Acceptance test: two worker instances, job runs once (SQLite locally, MariaDB in CI)
+- [ ] 2.7.5 Worker heartbeat (every minute); its age in every sync response
 - [ ] **2.7 done** · PR:
 
 #### 2.8 FCM (needs M1)
@@ -503,9 +492,9 @@ Run 1 notes M1 under Open blockers in `docs/last-session.md` if it is still miss
 *Acceptance (automated):* fake FCM records the wake-up; optionally real delivery in the emulator via dev Firebase (M2).
 
 - [ ] 2.8.1 Sender interface: real (`firebase-admin`, service account from the secret store) and fake (`dev/fake-fcm`)
-- [ ] 2.8.2 Data message `{"t":"sync"}`, TTL, **priority rule** as a pure function (high only when a display is expected now, otherwise normal + `collapse_key`) with tests
+- [ ] 2.8.2 Data message `{"t":"sync"}`, TTL, **priority rule** as a pure function (high only when a display is expected now, incl. watchdog retries that lead to a late display; otherwise normal + `collapse_key`) with tests
 - [ ] 2.8.3 Token maintenance: invalid/unregistered tokens marked, devices without a valid token visible
-- [ ] 2.8.4 Wake-ups on new notifications and status changes; test-push button in the wizard (1.9.3) and admin CLI (1.11.5)
+- [ ] 2.8.4 Wake-ups on new notifications and status changes; FCM dry-run credential check in the wizard (1.9.3); real test push via admin CLI (1.11.5) and admin UI → Tools (2.11.5)
 - [ ] 2.8.5 App: `google-services.json`, FCM config plugin, `FirebaseMessagingService` → sync, `onNewToken` → `POST /api/devices/me/fcm-token`
 - [ ] 2.8.6 **Silent re-post** when a high-priority wake-up brings nothing new (logic in `engine-core`, posting in `engine-android`)
 - [ ] 2.8.7 Acceptance tests with fake FCM; optional real delivery via dev Firebase
@@ -515,10 +504,14 @@ Run 1 notes M1 under Open blockers in `docs/last-session.md` if it is still miss
 
 *Acceptance (automated):* time-controlled backend tests with a fast-forwarded clock; engine-core test: no notification while offline.
 
+Do 2.9.5 (quiet-hours function) first; 2.9.2 and 2.9.3 depend on it.
+
 - [ ] 2.9.1 Watchdog job (every minute): server notifications without ack → wake-ups after 2, 10, 60 min, then "not delivered"
-- [ ] 2.9.2 Heartbeat: device without sync for > 6 h outside quiet hours → notice to the other person and in the admin UI
-- [ ] 2.9.3 Engine: "Server nicht erreichbar" system notification (network available, sync failing for 3 h, once then after 24 h; extra sentence if urgent todos wait in the outbox)
+- [ ] 2.9.2 Heartbeat: device without sync for > 6 h outside quiet hours → notice to the other person and in the admin UI (needs the quiet-hours function from 2.9.5)
+- [ ] 2.9.3 Engine: "Server nicht erreichbar" system notification (network available, sync failing for 3 h outside quiet hours, once then after 24 h; the extra sentence about urgent todos in the outbox follows in 3.8, when todos exist)
 - [ ] 2.9.4 Acceptance tests: backend with fast-forwarded clock; `engine-core`: no notification while offline
+- [ ] 2.9.5 Quiet-hours function (per weekday, crossing midnight belongs to the start day) in Python and `engine-core`, with first vectors in `shared/test-vectors/`; 3.1 extends the vectors, 3.7 adds TS
+- [ ] 2.9.6 Engine: "worker down" system notification when the heartbeat age in sync responses is > 15 min outside quiet hours (once, then after 24 h); acceptance test with fake clock
 - [ ] **2.9 done** · PR:
 
 #### 2.10 "Delivery" screen complete
@@ -540,6 +533,7 @@ Run 1 notes M1 under Open blockers in `docs/last-session.md` if it is still miss
 - [ ] 2.11.2 Devices page: last sync, app version, FCM token status, generate pairing code, lock device
 - [ ] 2.11.3 Delivery page: status per notification and device, delay, watchdog retries
 - [ ] 2.11.4 Page tests for the htmx endpoints
+- [ ] 2.11.5 Tools page: test push / test notification to a chosen device
 - [ ] **2.11 done** · PR:
 
 #### 2.12 Observation job
@@ -568,9 +562,9 @@ Run 1 notes M1 under Open blockers in `docs/last-session.md` if it is still miss
 The agent provides an exact step-by-step guide in `docs/checkpoint-c1.md`.
 
 - [ ] C1.1 Coolify has deployed the `release` state and `/api/health` responds
-- [ ] C1.2 **Setup wizard** on the admin subdomain: admin account + TOTP, upload Firebase service account, test push, create second account
+- [ ] C1.2 **Setup wizard** on the admin subdomain: admin account + TOTP, upload Firebase service account (dry-run check), create second account
 - [ ] C1.3 **APK installed on both phones**, paired with a pairing code, setup flow done (incl. Samsung battery settings)
-- [ ] C1.4 "Delivery" on both devices: everything green
+- [ ] C1.4 Test push from admin UI → Tools to both phones arrives; "Delivery" on both devices: everything green
 - [ ] C1.5 **Hardware tests** the emulator does not cover (list in the checkpoint document), among them:
   - [ ] natural Doze: phone untouched for 2 h
   - [ ] Samsung-specific behavior, app reinstalled
@@ -590,24 +584,24 @@ Open issues from C1 take priority over new packages.
 - [ ] **Run 3 done:** all packages ticked, CI green.
 - [ ] Agent asked Martin to move `release` to `main` and reported C2. **It does not stop** but starts Run 4 right away (C2 blocks nothing).
 
-- [ ] **3.0** Break 3.1–3.12 into sub-tasks in this file (same format as Runs 1 and 2)
-- [ ] **3.1** Spec `docs/spec-todos.md`, test vectors for levels (incl. `due_soon`, end-of-day downgrade of explicit urgent), quiet hours per weekday, **modes** (effective mode, manual end, schedule, `dnd` catch-up), per-user intervals, nag window, overdue slots, snooze (2 Std./Bis morgen, combined), nag times, rotation, RRULE, conflicts · PR:
+- [ ] **3.0** Break 3.1–3.13 into sub-tasks in this file (same format as Runs 1 and 2)
+- [ ] **3.1** Spec `docs/spec-todos.md`, test vectors for levels (incl. `due_soon`, end-of-day downgrade of explicit urgent), quiet hours per weekday, **modes** (effective mode, manual end, schedule, `dnd` catch-up), per-user intervals, nag window, overdue slots, snooze (2 Std./Bis morgen, combined), nag times, rotation, RRULE, conflicts; edge cases: level boundaries (exactly 1 / 4 weeks), the "interval" of calendar-rule series for relative thresholds; display keys for batched activity, quiet-hours catch-up without summary and `dnd` catch-up (added to README 3.5) · PR:
   *Acceptance:* vectors exist and load in all three languages
-- [ ] **3.2** Backend: migrations (`people`, `categories`, `todos`, `todo_series` incl. `replace_open`, `todo_snoozes` incl. combined snooze, `todo_claims`, `activity_events`; `user_settings` extended with mode, mode end, mode schedule and all per-user intervals), seed data, **activity events written for every todo action** (push, REST, worker), sync operations, conflict logic per field group, conflict log · PR:
+- [ ] **3.2** Backend: migrations (`people`, `categories`, `todos` incl. `lead_time` and `urgent_sent_at`, `todo_series` incl. `replace_open`, `todo_snoozes` incl. combined snooze, `todo_claims`, `activity_events`; `user_settings` extended with mode, mode end, mode schedule and all per-user intervals), seed data, **activity events written for every todo action** (push, REST, worker), sync operations, conflict logic per field group, conflict log · PR:
   *Acceptance:* conflict scenarios (completed offline + title changed, delete vs. edit, clock skew)
-- [ ] **3.3** Backend: activity notifications (only: new todo for me/both; completed/dismissed for me/both or created by me; "Mach ich" on my urgent todo) with batching and collection until the first summary, explicit urgent incl. the night special case, claims, per-recipient delivery status for the sender, wake-up on status change of nagging todos, **mode-aware** sending (no display expected → normal priority) · PR:
+- [ ] **3.3** Backend: activity notifications (only: new todo for me/both; completed/dismissed for me/both or created by me; "Mach ich" on my urgent todo) with batching and collection until the first summary, explicit urgent incl. the night special case, claims, per-recipient delivery status for the sender, each user's next nag window start computed and synced to the other user (sender hint), wake-up on status change of nagging todos, **mode-aware** sending (no display expected → normal priority) · PR:
   *Acceptance:* tests with fast-forwarded clock; edits/deletions do not notify
 - [ ] **3.4** Design system: final semantic token set in `shared/design/tokens.json` (light/dark), base components, navigation, `repo.ts` + `repo.native.ts`; a hidden "design preview" screen showing all base components and tokens · PR:
   *Acceptance:* component tests, screenshot tests in the emulator (light/dark)
 - [ ] **3.5** Engine: Room tables and sync for todos, people, categories, series, snoozes, settings; bridge functions · PR:
   *Acceptance:* JVM tests
-- [ ] **3.6** App: settings (quiet hours per weekday, summary times per weekday, **all per-user intervals** with ranges, DND bypass, theme), **mode switch** with end (1 Std. / Bis morgen / Bis ich es ausschalte), **weekly mode schedule**, mode banner, recipient's mode shown when sending urgent · PR:
+- [ ] **3.6** App: settings (quiet hours per weekday, summary times per weekday, **all per-user intervals** with ranges, DND bypass, theme), **mode switch** with end (1 Std. / Bis morgen / Bis ich es ausschalte), **weekly mode schedule**, mode banner, recipient's mode and quiet-hours hint ("Ruhezeit bis …") shown when sending urgent · PR:
   *Acceptance:* emulator: change a setting → second test client sees it
-- [ ] **3.7** App: todo list (all todos visible, filters mine/both/other's), detail, create/edit (scheduled with optional lead time), complete, dismiss, reopen, postpone (incl. "Morgen"/"+3 Tage", scheduled todos), "send urgent" with delivery status ("Zugestellt"/"Mach ich"), level computation in TS; **offline banner** on every screen while sync fails (base component, text from `de.json`, unsent count); **"Noch nicht gesendet" marker** on todos with unconfirmed changes (prominent for urgent todos sent to the other person); "failed" state with retry/discard · PR:
+- [ ] **3.7** App: todo list (all todos visible, filters mine/both/other's), detail, create/edit (scheduled with optional lead time), complete, dismiss, reopen, postpone (incl. "Morgen"/"+3 Tage", scheduled todos; not offered for explicit urgent), "send urgent" with delivery status ("Zugestellt"/"Mach ich"), level computation in TS; **offline banner** on every screen while sync fails (base component, text from `de.json`, unsent count); **"Noch nicht gesendet" marker** on todos with unconfirmed changes (prominent for urgent todos sent to the other person); "failed" state with retry/discard · PR:
   *Acceptance:* E2E in the emulator: backend stopped → banner visible while editing, change kept; backend back → change synced, banner and marker gone; urgent todo sent while backend is down shows the prominent marker
-- [ ] **3.8** **Engine II:** summaries (incl. `due_soon` and the quiet-hours catch-up in the first summary), scheduled reminders (lead time, at `due_at`), nagging (explicit per todo incl. "Mach ich"; overdue as **one combined notification per user** at the 4 computed slots), nag window, quiet hours, **modes** (`remind` / `essentials` / `dnd`, schedule, `dnd` catch-up), snooze (30 min / 2 Std. / Bis morgen, combined), DND bypass, actions from the notification incl. 30 s undo · PR:
+- [ ] **3.8** **Engine II:** summaries (incl. `due_soon` and the quiet-hours catch-up in the first summary), scheduled reminders (lead time, at `due_at`), nagging (explicit per todo incl. "Mach ich"; overdue as **one combined notification per user** at the computed slots), nag window, quiet hours, **modes** (`remind` / `essentials` / `dnd`, schedule, `dnd` catch-up), snooze (30 min / 2 Std. / Bis morgen, combined), DND bypass (second urgent channel), "Server nicht erreichbar" extra sentence for urgent todos in the outbox, actions from the notification incl. 30 s undo · PR:
   *Acceptance:* planner vectors; emulator: "Done" action without the app open stops nagging, undo restores it
-- [ ] **3.9** Watchdog for all device-planned displays (summaries, nags, scheduled reminders; calendar in 4.5): server computes expected keys with the shared vectors (mode-aware, using the mode valid at the planned time), delivery records per repetition · PR:
+- [ ] **3.9** Watchdog for all device-planned displays (summaries, nags, scheduled reminders; calendar in 4.5): server computes expected keys with the shared vectors (mode-aware, using the mode valid at the planned time), delivery records per repetition, retries with high priority when a late display follows (decisions section 4) · PR:
   *Acceptance:* backend test with fast-forwarded clock
 - [ ] **3.10** Series: UI with pickers, RRULE in the client, validation and instance creation in the worker, rotation, dismissed rule, `replace_open` (default on for calendar rules), relative level thresholds, reopen removes untouched next instance, edit/pause/delete rules · PR:
   *Acceptance:* vectors (incl. relative thresholds); "every 2 weeks, rotating" and "every 1st Monday" as E2E
@@ -615,6 +609,8 @@ Open issues from C1 take priority over new packages.
   *Acceptance:* E2E: complete, snooze, postpone on device A → events with actor and time on device B; offline action shows the marker after sync
 - [ ] **3.12** Screenshots of all screens (light and dark) as CI artifact, checklist `docs/checkpoint-c2.md` · PR:
   *Acceptance:* artifact exists
+- [ ] **3.13** Apply the alarm-type decision from C1 (default and, if chosen, the fallback from decisions section 11) in the engine setting; remove the interim rule · PR:
+  *Acceptance:* engine test for the chosen default; if C1 is not decided yet, mark ⏸ and continue
 
 ---
 
@@ -659,9 +655,9 @@ Issues from C2 take priority.
   *Acceptance:* emulator: intent is fired
 - [ ] **4.7** Web: `repo.web.ts`, REST endpoints, hide native areas, offline banner + edit lock when the server is unreachable, build into the backend image · PR:
   *Acceptance:* Playwright E2E against dev backend, incl. backend stopped → banner, editing blocked
-- [ ] **4.8** Web login: password → approval in the app (code + yes/no) → session, recovery codes, admin reset, CSRF, 30 days, session list · PR:
+- [ ] **4.8** Web login: password → approval in the app (code + yes/no) → session, recovery codes, admin reset, CSRF, `SameSite=Lax` cookie, 30 days, session list · PR:
   *Acceptance:* E2E: browser (Playwright) + emulator approves
-- [ ] **4.9** Admin UI complete (activity page reads `activity_events`; current mode per user): statistics (incl. "Nerv-Level": notifications per user/day by class, snooze/postpone/claim counts, muted-channel warning from `device_status`), activity, conflicts, logs, settings, tools; admin login with TOTP · PR:
+- [ ] **4.9** Admin UI complete (activity page reads `activity_events`; current mode per user): statistics (incl. "Nerv-Level": notifications per user/day by class, snooze/postpone/claim counts, muted-channel warning from `device_status`), activity, conflicts, logs, settings (incl. per-user defaults and level thresholds), tools · PR:
   *Acceptance:* page tests
 - [ ] **4.10** One-page quick guide for Martin's wife (German), checklist `docs/checkpoint-c3.md` · PR:
   *Acceptance:* files exist
@@ -744,7 +740,8 @@ How long the runs take depends on how long an agent can work in one go. Work pac
 | Data loss before the backup phase | Coolify backups at C3 (accepted: C2/Run 4 data unprotected until then) |
 | Device locked by refresh-token rotation | generous reuse rule: previous token valid until the new one is used |
 | FCM deprioritizes high-priority messages without visible notifications | high priority only when a display is expected |
-| Server/worker down unnoticed | device shows "server unreachable" after 3 h of failing syncs with network |
+| Server down unnoticed | device shows "server unreachable" after 3 h of failing syncs with network |
+| Worker down while the API runs | worker heartbeat in sync responses, device notification after 15 min (2.9.6) |
 | New server breaks old app versions | protocol version header, previous version supported, minimum app version, update notice |
 | Cloudflare Access bypassed via public VPS IP | backend validates the Access JWT on the admin host |
 | Repo forgotten as public | reminder in the C3 checklist |

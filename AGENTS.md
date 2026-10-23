@@ -15,22 +15,27 @@ Language: code, identifiers, comments, docs, specs, commit messages, PRs and iss
 5. `docs/assumptions.md` – assumptions made by earlier agents
 6. The spec for your package under `docs/spec-*.md`, if it exists
 
-On contradictions: `docs/decisions.md` (✅) > `README.md` > `BUILDPLAN.md` > `docs/assumptions.md`. If you notice a contradiction, fix the lower-ranked document in the same PR.
+On contradictions:
+
+- **Behavior** (what the app, server and engine do): `docs/decisions.md` ✅ > `README.md` > `docs/decisions.md` 🟡 > `BUILDPLAN.md` > `docs/assumptions.md`.
+- **Process, sequence, status, environment** (how and in which order we build, CI, checkpoints, tracking): `BUILDPLAN.md` > `AGENTS.md` > everything else.
+
+If you notice a contradiction, fix the lower-ranked document in the same PR.
 
 ---
 
 ## 2. How to work
 
-1. Take the **Next** item from `docs/last-session.md` (or the first unticked sub-task in BUILDPLAN Part B, if it disagrees with the checkboxes) and mark it 🚧 with your branch. **Open GitHub issues labeled `bug` take priority.**
+1. Take the **Next** item from `docs/last-session.md` (or the first unticked sub-task in BUILDPLAN Part B, if it disagrees with the checkboxes). Check open draft PRs first: a 🚧 claim lives on its branch and is only visible through the draft PR. **Open GitHub issues labeled `bug` take priority.**
 2. Larger package without a spec? Write the spec first under `docs/` (short, concrete, including edge cases). No approval needed.
-3. Branch `pkg/<id>-<short-name>`, e.g. `pkg/1.7-migrations`.
+3. Branch `pkg/<id>-<short-name>`, e.g. `pkg/1.7-migrations`. Mark the sub-task 🚧 with the branch name in the first commit and open the PR as a draft right away.
 4. The package's acceptance criterion becomes an **automated test**. Test first, then implementation, where it makes sense.
 5. Check locally: `make lint && make test`.
 6. For Android parts: push, trigger CI, read the result with `gh run watch` / `gh run view --log-failed`.
-7. Open a PR (template below), enable auto-merge. Merging into `main` happens when the required check `ci-gate` is green.
-8. In the same PR: tick the finished sub-tasks in BUILDPLAN Part B, tick the package line with the PR number once all its sub-tasks are done, Then go straight to the next sub-task.
+7. Mark the PR ready for review (template below), enable auto-merge. Merging into `main` happens when the required check `ci-gate` is green.
+8. In the same PR: tick the finished sub-tasks in BUILDPLAN Part B, tick the package line with the PR number once all its sub-tasks are done. Then go straight to the next sub-task.
 
-At the end of a run: write the checkpoint file `docs/checkpoint-cN.md`, ask Martin to move `release` (issue + note under **Needs Martin** in `docs/last-session.md`) and stop (see BUILDPLAN Part B). Never move `release` yourself.
+At the end of a run, follow that run's lines in BUILDPLAN Part B: Run 1 continues directly with Run 2; after Runs 2 and 4 write the checkpoint file `docs/checkpoint-cN.md` (it is the run's last package), ask Martin to move `release` (issue + note under **Needs Martin** in `docs/last-session.md`) and stop; after Run 3 ask the same but continue with Run 4. Never move `release` yourself.
 
 ### Ending a session
 
@@ -91,7 +96,8 @@ Whenever you stop and wait for a new prompt (run done, blocked, context running 
 2. User-visible behavior is not covered by the README or decisions.
 3. Something irreversible is about to happen: package name, signing key, a migration that deletes data, changes to `release`.
 4. CI stays red after several serious attempts, or an external service is down.
-5. GitHub Actions free minutes are used up (only relevant once the repo is private again after C3) → do not stop; continue with home-server packages (backend, `engine-core`, web) and batch Android changes.
+
+Not a reason to stop: GitHub Actions free minutes used up (only possible once the repo is private again after C3). Continue with home-server packages (backend, `engine-core`, web), batch Android changes and note it under **Open blockers**.
 
 Decide everything else yourself and record it in `docs/assumptions.md` (date, package, assumption, reason).
 
@@ -135,7 +141,7 @@ Details: `BUILDPLAN.md` A6 and A7. Summary:
 - **Single-alarm planner:** always exactly one exact alarm for the next time.
 - **Only the server creates recurring instances.**
 - **Time only through the time provider** (backend and engine). Never call `datetime.now()`, `System.currentTimeMillis()` or similar directly in logic code.
-- Rules that exist in several languages (levels, quiet hours, modes, nag times, rotation, RRULE, conflicts) are tested against **`shared/test-vectors/`**. Add new edge cases there, not just in one language.
+- Rules that exist in several languages (levels, quiet hours, modes, nag times, planner, rotation, RRULE, conflicts, strings) are tested against **`shared/test-vectors/`**. Add new edge cases there, not just in one language.
 
 ### Database (A7)
 - Only portable SQLAlchemy types, custom UTC `DateTime` type.
@@ -159,7 +165,7 @@ Details: `BUILDPLAN.md` A6 and A7. Summary:
 - The `release` branch is only touched by Martin (or by an agent on his explicit instruction).
 
 ### Design tokens (README 8.2)
-- **Single source: `shared/design/tokens.json`.** Never edit `*.generated.*` files; run `make tokens`.
+- **Single source: `shared/design/tokens.json`.** Never edit generated files (`*.generated.*`, Android `*_generated.xml`); run `make tokens`.
 - Use **semantic** tokens only (`color.bg.surface`, `color.state.urgent`), never base tokens or hard-coded colors, spacing, radii or font sizes. Applies to the app, the admin UI CSS and Android resources alike.
 - Need a value that does not exist? Add a semantic token in `tokens.json`; do not inline it.
 - Only base components in `app/components/` combine tokens into styles. Screens compose base components.
@@ -185,7 +191,7 @@ Details: `BUILDPLAN.md` A6 and A7. Summary:
 | Assignee | a user or both (`NULL`) |
 | Level | `long_term` / `mid_term` / `due_soon` / `overdue`, **computed**, never stored. "Urgent" only means the explicit kind `immediate` |
 | Kind | `scheduled` / `horizon` / `immediate` / `someday` |
-| Nagging | repeated notification until "done": explicit urgent every 15 min, overdue as one combined notification at 4 overdue slots per day. `due_soon` never nags |
+| Nagging | repeated notification until "done": explicit urgent every 15 min, overdue as one combined notification at the overdue slots (default 4 per day). `due_soon` never nags |
 | Nag window | from the day's first summary until quiet hours start; nagging only happens inside it |
 | Claim ("Mach ich") | recipient confirms an explicit urgent todo; nagging slows to hourly, the sender is told |
 | Snooze / Postpone | pause nagging (30 min / 2 Std. / Bis morgen; per todo, or for the combined overdue notification) / set a new target date or `due_at` |

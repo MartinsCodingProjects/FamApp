@@ -55,7 +55,7 @@ Rationale for every decision: `docs/decisions.md`. Build order and development e
 ```
 
 - **Two containers from one image:** `api` (any number of worker processes) and `worker` (exactly one instance, so scheduled jobs never run twice).
-- **Web app and API on the same subdomain:** no CORS configuration, and a `SameSite=Strict` session cookie works without exceptions.
+- **Web app and API on the same subdomain:** no CORS configuration, and a `SameSite=Lax` session cookie (plus CSRF token) works without exceptions.
 - **Admin UI on its own subdomain**, served by the same backend but only reachable via the admin host and additionally behind Cloudflare Access.
 
 ---
@@ -67,9 +67,9 @@ Rationale for every decision: `docs/decisions.md`. Build order and development e
 | Class | Source | Android channel | Behavior |
 |---|---|---|---|
 | **Summary** | Device, at configured times; content built at display time from local data | `summary`, high | Only place where `due_soon` todos appear. The day's first summary also carries the quiet-hours catch-up. Server watchdog expects an ack, otherwise wake-up after 15 min |
-| **Urgent (explicit)** | Server, sent by a person | `urgent`, high, bypass Do Not Disturb (configurable) | Repeats every 15 min inside the nag window until done; hourly after "Mach ich"; counts as overdue after the recipient's next quiet-hours start. Actions: Done, Mach ich, Snooze |
+| **Urgent (explicit)** | Server, sent by a person | `urgent`, high; a second urgent channel bypasses Do Not Disturb (used when the user enabled bypass) | Repeats every 15 min inside the nag window until done; hourly after "Mach ich"; counts as overdue after the recipient's next quiet-hours start. Actions: Done, Mach ich, Snooze |
 | **Scheduled reminder** | Device, at `due_at` (optional lead time: 15 min / 1 h / 1 day) | `due`, high | Once; if still open afterwards, the todo is overdue and joins the overdue nag |
-| **Overdue (combined)** | Device, while any horizon or scheduled todo of the user is overdue | `due`, high | **One combined notification per user**, at the **4 overdue slots** per day (3.3). Actions: Snooze 2 Std. / Bis morgen; tapping opens the list |
+| **Overdue (combined)** | Device, while any todo of the user is overdue (horizon, scheduled, or explicit urgent after the end-of-day downgrade) | `due`, high | **One combined notification per user**, at the **overdue slots** (default 4 per day, 3.3). Actions: Snooze 2 Std. / Bis morgen; tapping opens the list |
 | **Normal** | Server, when the other person creates a todo for me/both, completes/dismisses one for me/both or created by me, or says "Mach ich" to my urgent todo | `activity`, normal | Batched; collected during quiet hours and until the first summary |
 | **Calendar** | Device, from calendar data | `calendar`, normal | Evening before, morning of, start time |
 | **Login approval** | Server, on web login | `security`, high | Yes/No action, expires after 2 min |
@@ -80,7 +80,6 @@ All times, intervals and switches are **configurable per user in the app** (full
 ### 3.2 Quiet hours (default 22:00–06:00)
 
 Configurable per weekday. They apply in the modes `remind` and `essentials`; in `dnd` nothing is shown anyway.
-
 
 - No normal notifications, no nagging, no summaries.
 - **Nag window:** nagging runs only from the day's **first summary** until quiet hours start (without a summary that day: from the end of quiet hours). Between the end of quiet hours and the first summary, the quiet-hours rules for nagging and activity still apply. Weekends start later automatically because summary times are per weekday.
@@ -95,13 +94,14 @@ Configurable per weekday. They apply in the modes `remind` and `essentials`; in 
 - **Only explicit urgent and overdue todos nag.** `due_soon` (< 1 week) never nags; it shows in the list and in summaries.
 - Explicitly urgent: every 15 min (configurable) from the time it was sent, one notification per todo.
   - **"Mach ich"** (claim): nagging for the claimer slows to hourly; sent to "both", nagging stops for the other user; the sender gets an activity notification.
-  - The sender sees per recipient "Zugestellt {time}" / "Mach ich {time}".
+  - The sender sees per recipient "Zugestellt {time}" / "Mach ich {time}". Sent during the recipient's quiet hours, the sender sees "Ruhezeit bis {time}, danach Erinnerungen alle {n} Min."; the server computes the recipient's next nag window start and syncs it to the sender.
   - Once the recipient's next quiet hours have started, it counts as `overdue` (computed) and moves into the combined overdue notification.
-- Overdue (horizon and scheduled): **one combined notification per user** ("3 überfällige Todos: …", up to 3 titles, oldest first) at **4 overdue slots** per day. Slots are computed from the nag window: cut it at each summary time, split the largest gap until there are 4, slot = midpoint of each gap (rounded to 5 min, gaps < 60 min get none). Example: quiet hours 22–06, summaries 07:00 / 12:30 / 19:00 → 09:45, 14:10, 17:25, 20:30. A todo that becomes overdue between slots waits for the next one.
+- Overdue (horizon, scheduled, downgraded explicit urgent): **one combined notification per user** ("3 überfällige Todos: …", up to 3 titles, oldest first) at the **overdue slots** (default 4 per day, per user 1–6). Slots are computed from the nag window: cut it at each summary time, split the largest gap until there are as many gaps as slots, slot = midpoint of each gap (rounded half up to 5 min, gaps < 60 min get none; details `docs/decisions.md` section 11). Example: quiet hours 22–06, summaries 07:00 / 12:30 / 19:00 → 09:45, 14:10, 17:25, 20:30. A todo that becomes overdue between slots waits for the next one.
 - Does **not** stop when tapped, only when the todo is done, dismissed or postponed (or snoozed).
 - Sent to "both": if one person completes it, it stops for both.
-- **Snooze** pauses per user and is synced, so it pauses on all of that user's devices. Explicit urgent: 30 min (default), "2 Std.", "Bis morgen". Combined overdue: "2 Std." (skipped slots become one display at the snooze end), "Bis morgen" (= start of tomorrow's nag window).
+- **Snooze** pauses per user and is synced, so it pauses on all of that user's devices. Explicit urgent: 30 min (default), "2 Std.", "Bis morgen" (short and long durations are per-user settings, 3.9; labels follow them). Combined overdue: "2 Std." (skipped slots become one display at the snooze end), "Bis morgen" (= start of tomorrow's nag window).
 - **One sound per alarm firing:** if several displays are due at the same minute, only the most important one plays a sound (explicit urgent > overdue > scheduled reminder > summary > calendar > activity > system); the rest post silently.
+- **Watchdog retries** for device-planned displays go out with high priority when they lead to a (late) display now (nags, scheduled reminders, summaries); calendar retries and displays the recipient's mode suppresses go out normal priority.
 - Every repetition re-posts the notification with the **same ID** (with sound). No pile of identical notifications.
 - **Undo:** after "Done" from a notification it turns into "Erledigt – Rückgängig" for 30 s.
 - When a todo is completed on one device, the server sends a wake-up to all other devices, which cancel the alarm. Without a network it keeps nagging until sync brings the new status.
@@ -138,6 +138,8 @@ Every display has a fixed key from which the Android notification ID and the del
 | Scheduled reminder | `due:<todo-id>:<lead/at>` |
 | System | `sys:<kind>:<date>` |
 
+Keys for the remaining displays (batched activity, quiet-hours catch-up on a day without summary, `dnd` catch-up) are defined in `docs/spec-todos.md` (BUILDPLAN 3.1) and added here.
+
 Keys are deterministic, so the server knows which acks to expect without the device announcing them. The Android notification ID is derived from the key; delivery records add the planned minute for repeating displays (`nag:<todo-id>@2026-11-02T14:15Z`), so every repetition is tracked.
 
 ### 3.6 Sync triggers
@@ -162,6 +164,7 @@ Keys are deterministic, so the server knows which acks to expect without the dev
   - An explicit urgent todo (`nag:<todo-id>`) gets the 2/10/60 min schedule for its first display.
   - Device without sync for > 6 h (outside quiet hours): notice to the other person and in the admin UI.
 - **Server unreachable:** if the device has network but sync fails for 3 h outside quiet hours, it shows a local system notification. No network (flight mode, dead zone) never triggers it.
+- **Worker down:** the worker writes a heartbeat every minute and every sync response carries its age. If it is older than 15 min outside quiet hours, the device shows a local system notification (once, then again after 24 h), because the API can still answer while watchdog, wake-ups and series have stopped.
 - **Catch-up on the device:** due entries that were never shown are shown immediately on the next sync and marked "late". Expired entries (`expires_at`) are discarded.
 - **Every high-priority wake-up ends in a visible notification:** if the sync after it brings nothing new to show (e.g. a watchdog retry for a display whose ack got stuck), the engine silently re-posts that display with the same ID (the open display with a pending or just-sent ack, otherwise the most recent active high-channel display). FCM therefore never sees high-priority messages without a notification.
 
@@ -234,9 +237,9 @@ Not per user: level thresholds (both users must see the same levels), system tim
 | > 4 weeks | `long_term` | – |
 | 1–4 weeks | `mid_term` | – |
 | < 1 week | `due_soon` | none (list and summaries only) |
-| past (from 00:00 on the day after `target_date`) | `overdue` | combined notification at the 4 overdue slots |
+| past (from 00:00 on the day after `target_date`) | `overdue` | combined notification at the overdue slots |
 
-"Postpone" sets a new target date: "Morgen", "+3 Tage", 1–4 weeks or 1–3 months from today. For scheduled todos it moves `due_at` by the same amount and keeps the time of day. Thresholds are configurable centrally.
+"Postpone" sets a new target date: "Morgen", "+3 Tage", 1–4 weeks or 1–3 months from today. For scheduled todos it moves `due_at` by the same amount and keeps the time of day. Explicit urgent todos (`immediate`) cannot be postponed (Done, Mach ich, Snooze, Dismiss, or edit them). Thresholds are configurable centrally.
 
 **Series instances use relative thresholds:** `due_soon` only in the last 25 % of the series interval (at least 1 day, at most the normal 1 week before `target_date`), otherwise `mid_term`/`long_term` as above. So "every 2 weeks" is due soon 3.5 days before, not 7.
 
@@ -278,7 +281,7 @@ Level computation exists three times (Python on the server, Kotlin in `engine-co
 ## 5. Calendar
 
 - Three sources, all accessible through Martin's Google account: his calendar, his wife's calendar, the shared one. Both users see all three.
-- **Google Calendar API, read-only** (`calendar.readonly`). One OAuth login in the setup wizard. OAuth app set to "In production" without verification so refresh tokens do not expire after 7 days.
+- **Google Calendar API, read-only** (`calendar.readonly`). One OAuth login in the admin UI (Settings, at C3; see 10). OAuth app set to "In production" without verification so refresh tokens do not expire after 7 days.
 - The worker fetches incrementally every 5 min (`syncToken`), writes `calendar_events` (expanded recurrences, −1 to +12 months) and distributes them through the normal sync. Google does not allow `timeMin`/`timeMax` with `syncToken`, so the server applies the window itself. The device keeps **−1 to +3 months** locally, so all calendar views work offline; views stop at that window.
 - **Who gets notified, per source:** Martin's calendar → Martin, his wife's → his wife, shared → both (configurable in the admin UI).
 - Calendar notifications: evening before (19:00), morning of (07:00), start time. All-day events have no start-time notification. Anything falling into quiet hours is dropped.
@@ -294,7 +297,7 @@ All synced tables have `id` (UUID), `rev` (sequential number from `next_rev()`, 
 
 | Table | Content | Synced to app |
 |---|---|---|
-| `users` | accounts (2), role, time zone | own row + other user's name |
+| `users` | accounts (2), role, time zone | own row + other user's name and next nag window start (server-computed, for the sender hint in 3.3) |
 | `user_settings` | quiet hours and summary times per weekday, mode, mode end, mode schedule, all intervals (3.9), DND bypass, theme | own; mode, mode end and schedule also to the other user |
 | `activity_events` | activity view (4.5): actor, todo, type, parameters | yes (both users; device keeps 90 days) |
 | `devices` | device, FCM token, app version, last sync, notification permission and channel importance (`device_status`) | no |
@@ -320,7 +323,7 @@ All synced tables have `id` (UUID), `rev` (sequential number from `next_rev()`, 
 ## 7. Sync protocol and conflicts
 
 - **Delta by revision:** `GET /api/sync?since=<rev>&limit=500` returns all changes visible to the user across all synced tables, including tombstones, paginated. The client stores the highest rev. Clocks do not matter for this.
-- **Outbox:** `POST /api/sync/push` accepts a list of operations (create, change field group, change status, delete, ack, snooze). Each operation has its own UUID; repeats have no effect.
+- **Outbox:** `POST /api/sync/push` accepts a list of operations (create, change field group, change status, delete, ack, snooze, claim, `device_status`, `alarm_firing`; full list in `docs/spec-sync.md`). Each operation has its own UUID; repeats have no effect.
   - Entries **never expire** and are removed only after the server confirms them; they survive restarts, reboots, updates and schema changes.
   - An entry the server rejects permanently (validation error) is marked "failed" instead of blocking the queue or being deleted; the app offers "Erneut versuchen" / "Verwerfen".
   - Todos with unconfirmed changes show a **"Noch nicht gesendet"** marker; for an urgent todo sent to the other person it is prominent ("{name} wurde noch nicht benachrichtigt").
@@ -342,7 +345,8 @@ app/                      Expo app (TypeScript)
 ├─ theme/                 ThemeProvider; reads generated tokens from shared/design
 ├─ i18n/                  t() helper; reads shared/strings
 ├─ components/            base components: Button, Card, Text, Input, Badge, ListItem …
-├─ screens/               Todos, Activity, Calendar, Settings, Delivery, Pairing, Login
+├─ screens/               Todos (incl. the "Urgent" view summaries open), Activity, Calendar,
+│                         Settings, Delivery, Pairing, Login, hidden design preview
 ├─ data/
 │  ├─ repo.ts             shared interface and types (listTodos, saveTodo, completeTodo …)
 │  ├─ repo.native.ts      → Kotlin engine                     [Android]
@@ -383,7 +387,7 @@ A small generator script (`make tokens`, also run by CI and before every build) 
 |---|---|---|
 | Expo app + web | `app/theme/tokens.generated.ts` | `StyleSheet` via ThemeProvider |
 | Admin UI | `backend/app/admin/static/tokens.generated.css` (CSS custom properties, light + dark via `prefers-color-scheme` and a toggle) | plain CSS |
-| Android engine | `engine-android/res/values(-night)/colors_generated.xml` | notification accent color per channel (e.g. urgent = red), small-icon tint |
+| Android engine | `app/modules/famapp-engine/engine-android/…/res/values(-night)/colors_generated.xml` (Android resource names cannot contain dots, hence `_generated`) | notification accent color per channel (e.g. urgent = red), small-icon tint |
 | App icon / splash | values read by `app.config.js` | icon background, splash color |
 
 Generated files are committed so the home server and CI need no extra step to run, and CI fails if they are out of date.
@@ -404,7 +408,7 @@ Generated files are committed so the home server and CI need no extra step to ru
 - User-facing text is **German** and lives in **one place: `shared/strings/de.json`**. This covers every surface: app and web screens, notifications generated by the engine (summaries, nagging, calendar), notifications generated by the server (activity, login approval), and the admin UI.
 - **Keys by area**, e.g. `todo.action.done`, `notification.summary.title`, `settings.quietHours.label`. Code contains keys only, never German text.
 - **Placeholders and plurals:** `"{count} dringende Todos"` with `one`/`other` forms (selected via the language's plural rules), so "1 dringende Todos" cannot happen.
-- **One small `t(key, params)` helper per language** (TypeScript, Kotlin, Python), a few dozen lines each, same behavior, tested against shared test vectors (`shared/test-vectors/strings.json`).
+- **One small `t(key, params)` helper per language** (TypeScript, Kotlin, Python), a few dozen lines each, same behavior, tested against shared test vectors (`shared/test-vectors/strings/`).
 - **Server notifications carry a key plus parameters**, not finished text. The device renders them with the same strings file. Display keys and wording therefore stay consistent no matter where a notification originates.
 - How each consumer gets the strings: the Expo app and Python import the JSON directly; the Kotlin engine gets it copied into its assets at build time.
 - **CI checks:** every key used in code exists in `de.json`; unused keys are reported; placeholders match between usage and text; a lint rule rejects German string literals in UI code.
@@ -424,7 +428,7 @@ Generated files are committed so the home server and CI need no extra step to ru
 **Web app (both users)**
 - Password (Argon2id) + **approval in the app**: all of the user's devices show "Approve browser login?" with a two-digit code that is also shown in the browser. Valid for 2 min.
 - Fallback: recovery codes or a reset by the admin.
-- Session cookie `HttpOnly`, `Secure`, `SameSite=Strict`, CSRF token, browser remembered for 30 days.
+- Session cookie `HttpOnly`, `Secure`, `SameSite=Lax` (so links into the app keep the session), CSRF token, browser remembered for 30 days.
 
 **Admin UI (Martin only)**
 - Own subdomain behind Cloudflare Access (GitHub SSO), plus login with password + TOTP, role `admin`.
@@ -447,8 +451,8 @@ Generated files are committed so the home server and CI need no extra step to ru
 1. Set Coolify environment variables: `DATABASE_URL` (MariaDB), `MASTER_KEY`, `SETUP_TOKEN`, `CF_ACCESS_TEAM_DOMAIN`, `CF_ACCESS_AUD`.
 2. First visit to the admin subdomain → wizard, only with `SETUP_TOKEN`.
 3. Create admin account with password + TOTP.
-4. Upload Firebase service account → test push to a test device.
-5. Second user account, people, time zone, default times.
+4. Upload Firebase service account → credentials checked with an FCM dry run (no device needed yet). The real test push to a phone happens after pairing via admin UI → Tools.
+5. Second user account, time zone, default times. (People and categories arrive as seed data with the todo migrations, BUILDPLAN 3.2.)
 6. Wizard locks itself. Changes afterwards via the admin UI; secrets are never shown in plain text again.
 7. Later (C3, admin UI → Settings): enter Google OAuth client → Google login → select and assign calendars → test fetch.
 
@@ -457,14 +461,14 @@ Delivery (per display and device; alarm firings with pre-display sync success pe
 
 ### Deployment and migrations
 - Coolify deploys only the `release` branch; only Martin moves it.
-- On start the worker runs `alembic upgrade head` under a DB lock, then starts the scheduler. `api` answers `/api/health` with 503 until the schema matches its code.
-- Migrations are additive (expand/contract), so a bad release can be rolled back by redeploying the previous image.
+- On start the worker runs `alembic upgrade head` under a DB lock, then starts the scheduler. `api` answers `/api/health` with 503 until the schema is at its code's head revision or a later one.
+- Migrations are additive (expand/contract), so a bad release can be rolled back by redeploying the previous image (it accepts the newer schema). Down migrations are tested in CI but never run in production.
 
 ### Backups
 After the MVP: scheduled Coolify DB backup to external storage plus a restore test. Automatic backups are switched on at checkpoint C3.
 
 ### App distribution
-Signed APK from CI (signing only in the protected GitHub Environment `release`), installed directly or via Firebase App Distribution; no Play Store. No development builds on the phones. The app shows "Update verfügbar" when the server reports a newer version.
+Signed APK from CI (signing only in the protected GitHub Environment `release`, attached to a GitHub Release), installed directly or via Firebase App Distribution; no Play Store. No development builds on the phones. The app shows "Update verfügbar" when the server reports a newer version.
 
 ---
 
@@ -494,12 +498,19 @@ famapp/
 ├─ Makefile                 setup, dev, test, lint, tokens, e2e, apk
 ├─ branding.json            display name, short name, icon color (single place)
 ├─ docker-compose.dev.yml   local environment for machines with Docker (notebook, CI)
-├─ docs/                    decisions, specs, last-session.md, session-history.md, assumptions.md, checkpoint lists
+├─ docs/
+│  ├─ decisions.md          decision log with rationale
+│  ├─ assumptions.md        decisions made by agents
+│  ├─ last-session.md       handover from the previous session (status: BUILDPLAN Part B)
+│  ├─ session-history.md    archive of all handovers, newest first
+│  ├─ spec-*.md             specifications
+│  └─ checkpoint-c*.md      checkpoint checklists for Martin
 ├─ shared/
 │  ├─ strings/de.json       all user-facing text (single source, see 8.4)
 │  ├─ design/tokens.json    all design tokens (single source, see 8.2)
-│  └─ test-vectors/         shared test cases (levels, quiet hours, rotation, RRULE, conflicts, strings)
-├─ tools/                   generators (tokens), string/key checks
+│  └─ test-vectors/         shared test cases (levels, quiet hours, modes, nag times, planner,
+│                           rotation, RRULE, conflicts, strings)
+├─ tools/                   token generator, string/key checks, architecture checks, session-end.sh
 ├─ dev/
 │  ├─ fake-fcm/
 │  └─ fake-gcal/            with fixtures
@@ -533,7 +544,7 @@ famapp/
 - **"Force stop"** in the app settings stops alarms and FCM until the app is opened again. No app can work around this. The server heartbeat makes it visible.
 - Samsung may restrict background work despite settings. The reliability check, watchdog and heartbeat make this visible. Plan B: `specialUse` foreground service (see 8.1).
 - `setAlarmClock()` shows an alarm icon and becomes the system's "next alarm" (default decided at C1, see 3.4).
-- Nothing outside the phones watches the server: if the worker is down, devices notice only through failing syncs (system notification after 3 h).
+- Nothing outside the phones watches the server: if the whole server is down, devices notice through failing syncs (system notification after 3 h); if only the worker is down, they notice through its stale heartbeat in sync responses (3.7).
 - Without a network, a todo completed on the other device may keep nagging until the network is back.
 - Web login needs a paired phone (or a recovery code).
 
