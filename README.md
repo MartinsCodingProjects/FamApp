@@ -66,33 +66,42 @@ Rationale for every decision: `docs/decisions.md`. Build order and development e
 
 | Class | Source | Android channel | Behavior |
 |---|---|---|---|
-| **Summary** | Device, at configured times; content built at display time from local data | `summary`, high | Server watchdog expects an ack, otherwise wake-up after 15 min |
-| **Urgent (explicit)** | Server, sent by a person | `urgent`, high, bypass Do Not Disturb (configurable) | Repeats every 15 min until done. Actions: Done, Snooze |
-| **Scheduled reminder** | Device, at `due_at` (optional lead time: 15 min / 1 h / 1 day) | `due`, high | Once; if still open afterwards, the todo is overdue and joins the time-based nag |
-| **Urgent (time-based)** | Device, when a horizon todo becomes urgent or a scheduled todo is overdue | `due`, high | **One combined notification per user** for all of them, re-posted hourly until none are left. Tapping opens the list |
-| **Normal** | Server, when the other person creates a todo for me/both, or completes/dismisses one for me/both or created by me | `activity`, normal | Batched; collected during quiet hours |
+| **Summary** | Device, at configured times; content built at display time from local data | `summary`, high | Only place where `due_soon` todos appear. The day's first summary also carries the quiet-hours catch-up. Server watchdog expects an ack, otherwise wake-up after 15 min |
+| **Urgent (explicit)** | Server, sent by a person | `urgent`, high, bypass Do Not Disturb (configurable) | Repeats every 15 min inside the nag window until done; hourly after "Mach ich"; counts as overdue after the recipient's next quiet-hours start. Actions: Done, Mach ich, Snooze |
+| **Scheduled reminder** | Device, at `due_at` (optional lead time: 15 min / 1 h / 1 day) | `due`, high | Once; if still open afterwards, the todo is overdue and joins the overdue nag |
+| **Overdue (combined)** | Device, while any horizon or scheduled todo of the user is overdue | `due`, high | **One combined notification per user**, at the **4 overdue slots** per day (3.3). Actions: Snooze 2 Std. / Bis morgen; tapping opens the list |
+| **Normal** | Server, when the other person creates a todo for me/both, completes/dismisses one for me/both or created by me, or says "Mach ich" to my urgent todo | `activity`, normal | Batched; collected during quiet hours and until the first summary |
 | **Calendar** | Device, from calendar data | `calendar`, normal | Evening before, morning of, start time |
 | **Login approval** | Server, on web login | `security`, high | Yes/No action, expires after 2 min |
 | **System** | Device, e.g. network available but server unreachable for 3 h | `system`, normal | Once, again after 24 h |
 
-All times, intervals and switches are **configurable per user in the app**.
+All times, intervals and switches are **configurable per user in the app** (full list in 3.9). On top of the classes, each user has a **notification mode** (`remind` / `essentials` / `dnd`, 3.9) that decides which of them are shown.
 
 ### 3.2 Quiet hours (default 22:00–06:00)
 
+Configurable per weekday. They apply in the modes `remind` and `essentials`; in `dnd` nothing is shown anyway.
+
+
 - No normal notifications, no nagging, no summaries.
-- Exception: an explicitly urgent todo that is **newly sent during quiet hours** appears **once** (high channel, without bypassing Do Not Disturb). Nagging only starts when quiet hours end.
+- **Nag window:** nagging runs only from the day's **first summary** until quiet hours start (without a summary that day: from the end of quiet hours). Between the end of quiet hours and the first summary, the quiet-hours rules for nagging and activity still apply. Weekends start later automatically because summary times are per weekday.
+- Exception: an explicitly urgent todo that is **newly sent outside the nag window** appears **once** (high channel, without bypassing Do Not Disturb). Nagging starts with the nag window.
 - A scheduled reminder whose time falls into quiet hours is shown once (the user picked the time), without bypassing Do Not Disturb.
-- Normal notifications from quiet hours arrive at the start of active time as **one** combined notification ("Since 22:00: 4 changes").
+- Normal notifications from quiet hours arrive as **one line in the day's first summary** ("Seit 22:00: 4 Änderungen"); if the day has no summary, as one notification at the end of quiet hours.
 - Calendar notifications (morning, start time) that fall into quiet hours are dropped. The evening-before notification remains.
 - Login approvals are not affected by quiet hours (they are only triggered by the user's own action).
 
 ### 3.3 Nagging
 
-- Explicitly urgent: every 15 min (configurable), one notification per todo.
-- Time-based urgent and overdue (horizon and scheduled): **one combined notification per user** ("3 fällige Todos: …", up to 3 titles, overdue first), hourly (configurable).
-- Does **not** stop when tapped, only when the todo is done, dismissed or (time-based) postponed.
+- **Only explicit urgent and overdue todos nag.** `due_soon` (< 1 week) never nags; it shows in the list and in summaries.
+- Explicitly urgent: every 15 min (configurable) from the time it was sent, one notification per todo.
+  - **"Mach ich"** (claim): nagging for the claimer slows to hourly; sent to "both", nagging stops for the other user; the sender gets an activity notification.
+  - The sender sees per recipient "Zugestellt {time}" / "Mach ich {time}".
+  - Once the recipient's next quiet hours have started, it counts as `overdue` (computed) and moves into the combined overdue notification.
+- Overdue (horizon and scheduled): **one combined notification per user** ("3 überfällige Todos: …", up to 3 titles, oldest first) at **4 overdue slots** per day. Slots are computed from the nag window: cut it at each summary time, split the largest gap until there are 4, slot = midpoint of each gap (rounded to 5 min, gaps < 60 min get none). Example: quiet hours 22–06, summaries 07:00 / 12:30 / 19:00 → 09:45, 14:10, 17:25, 20:30. A todo that becomes overdue between slots waits for the next one.
+- Does **not** stop when tapped, only when the todo is done, dismissed or postponed (or snoozed).
 - Sent to "both": if one person completes it, it stops for both.
-- **Snooze** (default 30 min) pauses per user and is synced, so it pauses on all of that user's devices.
+- **Snooze** pauses per user and is synced, so it pauses on all of that user's devices. Explicit urgent: 30 min (default), "2 Std.", "Bis morgen". Combined overdue: "2 Std." (skipped slots become one display at the snooze end), "Bis morgen" (= start of tomorrow's nag window).
+- **One sound per alarm firing:** if several displays are due at the same minute, only the most important one plays a sound (explicit urgent > overdue > scheduled reminder > summary > calendar > activity > system); the rest post silently.
 - Every repetition re-posts the notification with the **same ID** (with sound). No pile of identical notifications.
 - **Undo:** after "Done" from a notification it turns into "Erledigt – Rückgängig" for 30 s.
 - When a todo is completed on one device, the server sends a wake-up to all other devices, which cancel the alarm. Without a network it keeps nagging until sync brings the new status.
@@ -103,7 +112,7 @@ Instead of one alarm per notification, the planner always keeps **exactly one ex
 
 1. The planner computes all future display times from the local DB (summaries, calendar, scheduled reminders, nag repetitions, scheduled server notifications), respecting quiet hours and snoozes.
 2. It sets one alarm for the earliest time.
-3. When the alarm fires, **everything due** is shown, then it re-plans.
+3. When the alarm fires, the engine first syncs if the device has network (timeout 5 s, then it continues with local data), shows **everything due**, then re-plans. The sync stops nags for todos the other person already completed while the normal-priority "cancel" wake-up is still held back by Doze.
 4. It also re-plans after every sync, every local change, boot, time/time zone change and app update.
 
 Benefits: Android's alarm limit does not matter, there is no reconciliation of many alarms, and the logic is testable in one place.
@@ -112,6 +121,7 @@ Benefits: Android's alarm limit does not matter, there is no reconciliation of m
   - `setAlarmClock()`: never delayed in Doze, but shows an alarm icon, becomes the system's "next alarm" (lock screen, watch) and ends DND schedules that stop "at the next alarm".
   - `setExactAndAllowWhileIdle()`: no side effects; in Doze at most about one alarm per 9 min, which the single-alarm planner rarely hits.
   - Until C1: `setAlarmClock()` for high-priority entries, otherwise `setExactAndAllowWhileIdle()`.
+  - Every alarm firing is recorded (alarm type, idle, network, pre-display sync result and duration) and evaluated in the admin UI, so that the C1 decision is based on data (`docs/decisions.md` section 11).
 - Permission `USE_EXACT_ALARM` (granted at install time because the app is not distributed via the Play Store).
 
 ### 3.5 Stable IDs
@@ -124,7 +134,7 @@ Every display has a fixed key from which the Android notification ID and the del
 | Summary | `summary:<user>:<date>:<slot>` |
 | Calendar | `cal:<event-id>:<evening/morning/start>` |
 | Nag (explicit urgent) | `nag:<todo-id>` (same ID for every repetition) |
-| Nag (time-based, combined) | `nagdue:<user>` (same ID for every repetition) |
+| Nag (overdue, combined) | `nagdue:<user>` (same ID for every slot) |
 | Scheduled reminder | `due:<todo-id>:<lead/at>` |
 | System | `sys:<kind>:<date>` |
 
@@ -153,6 +163,7 @@ Keys are deterministic, so the server knows which acks to expect without the dev
   - Device without sync for > 6 h (outside quiet hours): notice to the other person and in the admin UI.
 - **Server unreachable:** if the device has network but sync fails for 3 h outside quiet hours, it shows a local system notification. No network (flight mode, dead zone) never triggers it.
 - **Catch-up on the device:** due entries that were never shown are shown immediately on the next sync and marked "late". Expired entries (`expires_at`) are discarded.
+- **Every high-priority wake-up ends in a visible notification:** if the sync after it brings nothing new to show (e.g. a watchdog retry for a display whose ack got stuck), the engine silently re-posts that display with the same ID (the open display with a pending or just-sent ack, otherwise the most recent active high-channel display). FCM therefore never sees high-priority messages without a notification.
 
 ### 3.8 Reliability check in the app ("Delivery" screen)
 
@@ -169,6 +180,42 @@ Green/red status with a button that opens the matching system setting:
 
 ---
 
+### 3.9 Notification modes and per-user settings
+
+| Mode | Label | What notifies |
+|---|---|---|
+| `remind` (default) | Erinnern | everything in 3.1–3.3, full nagging |
+| `essentials` | Nur Wichtiges | summaries; activity (new todo for me/both, completed/dismissed, "Mach ich"); explicit urgent **once**; scheduled reminder and lead time **once**; calendar; "Server nicht erreichbar"; login approvals. **No nagging**; overdue only in summaries |
+| `dnd` | Nicht stören | nothing except web login approvals |
+
+- **Per user, synced.** Quiet hours still apply on top in `remind` and `essentials`.
+- **Manual switch** with an end: "1 Std." / "Bis morgen" (start of tomorrow's nag window) / "Bis ich es ausschalte". It overrides the schedule until it ends.
+- **Weekly mode schedule:** slots of (weekdays, start, end, `essentials` or `dnd`); no overlaps between slots; with quiet hours both apply, `dnd` wins.
+- **Effective mode** = manual mode if active, else schedule slot, else `remind`. Same function in all three languages, tested against `shared/test-vectors/modes.json`.
+- While not in `remind`, the app shows a permanent banner ("Nicht stören bis 07:00"). Both users sync each other's mode, mode end and schedule, so the sender of an urgent todo sees "Martin: Nicht stören bis 07:00 – erst danach".
+- **End of `dnd`:** one catch-up notification (activity, missed reminders, open urgent, overdue count), or inside the first summary if it ends before that. Urgent todos sent during `dnd` and never shown then appear once on their own. Missed calendar notifications are dropped.
+- After an `essentials`/`dnd` period during the day, nagging resumes immediately; overdue slots inside such periods are dropped.
+- The server knows the effective mode: wake-ups for displays the recipient will not see now go out as normal priority. The watchdog evaluates expected keys against the mode at the planned time; mode changes are stored with their timestamp.
+
+**Per-user settings** (`user_settings`, defaults from the admin UI):
+
+| Group | Settings (default) |
+|---|---|
+| Quiet hours | start/end per weekday (22:00–06:00) |
+| Modes | weekly mode slots (none) |
+| Summaries | times per weekday, each can be disabled |
+| Explicit urgent | repeat interval (15 min, 5–60), interval after "Mach ich" (60 min, 15–240), DND bypass (off) |
+| Overdue | slots per day (4, 1–6; placement computed) |
+| Snooze | short (30 min, 5–120 min), long (2 h, 1–8 h); "Bis morgen" fixed |
+| Scheduled | default lead time (none) |
+| Calendar | evening before (19:00), morning of (07:00), before start (0 min, 0–60), each can be disabled |
+| Activity | batching window (2 min, 0–10) |
+| Theme | System / Light / Dark |
+
+Not per user: level thresholds (both users must see the same levels), system timings (watchdog, periodic sync, "server unreachable", heartbeat; admin UI), the 30 s undo.
+
+---
+
 ## 4. Todos
 
 ### 4.1 Kinds and levels
@@ -177,7 +224,7 @@ Green/red status with a button that opens the matching system setting:
 |---|---|---|
 | `scheduled` | exact time (`due_at`), optional lead time | scheduled; "today" on the day itself; `overdue` after `due_at` |
 | `horizon` | target date, chosen as 1–4 weeks or 1–3 months | computed, see below |
-| `immediate` | explicitly urgent, right now | urgent (nag every 15 min) |
+| `immediate` | explicitly urgent, right now | urgent (nag every 15 min); `overdue` after the recipient's next quiet-hours start |
 | `someday` | none | someday |
 
 **The level is never stored; it is computed from `target_date`:**
@@ -186,12 +233,12 @@ Green/red status with a button that opens the matching system setting:
 |---|---|---|
 | > 4 weeks | `long_term` | – |
 | 1–4 weeks | `mid_term` | – |
-| < 1 week | `urgent` | hourly, not during quiet hours |
-| past | `overdue` | hourly, not during quiet hours |
+| < 1 week | `due_soon` | none (list and summaries only) |
+| past (from 00:00 on the day after `target_date`) | `overdue` | combined notification at the 4 overdue slots |
 
-"Postpone" sets a new target date (1–4 weeks / 1–3 months from today). Thresholds are configurable centrally.
+"Postpone" sets a new target date: "Morgen", "+3 Tage", 1–4 weeks or 1–3 months from today. For scheduled todos it moves `due_at` by the same amount and keeps the time of day. Thresholds are configurable centrally.
 
-**Series instances use relative thresholds:** `urgent` only in the last 25 % of the series interval (at least 1 day, at most the normal 1 week before `target_date`), otherwise `mid_term`/`long_term` as above. So "every 2 weeks" is urgent 3.5 days before, not 7.
+**Series instances use relative thresholds:** `due_soon` only in the last 25 % of the series interval (at least 1 day, at most the normal 1 week before `target_date`), otherwise `mid_term`/`long_term` as above. So "every 2 weeks" is due soon 3.5 days before, not 7.
 
 Level computation exists three times (Python on the server, Kotlin in `engine-core`, TypeScript in the UI). To keep them in sync there is **one shared test file**, `shared/test-vectors/levels.json`, that all three implementations are tested against.
 
@@ -208,7 +255,7 @@ Level computation exists three times (Python on the server, Kotlin in `engine-co
 
 - The rule is stored as an RRULE and created in the app with simple pickers:
   - **Interval** ("every x days/weeks"): counts **from completion**. Completing creates the next instance immediately. There is always exactly one open instance.
-  - **Calendar rule** ("the 15th of every 2nd month", "every 1st Monday"): fixed dates. If the old instance is still open, a new one is created anyway.
+  - **Calendar rule** ("the 15th of every 2nd month", "every 1st Monday"): fixed dates. If the old instance is still open, a new one is created anyway. With the series flag **"Neue Instanz ersetzt die offene"** (`replace_open`, default on) the old open instance is dismissed by the system (no rotation effect, no activity notification); turned off, instances stack.
 - **Assignee:** fixed (one person or both) or **rotating**: next up is whoever did **not** complete the last completed instance.
 - Dismissed counts like done (the next instance is created) but does not count for rotation.
 - **Only the server creates instances** (worker). This prevents duplicates from offline devices.
@@ -218,6 +265,13 @@ Level computation exists three times (Python on the server, Kotlin in `engine-co
 ### 4.4 Category "calendar" (add appointment)
 
 "New appointment" in the app does **not** write to Google. It creates a todo in the `calendar` category with the appointment data in `payload` (title, start, end, location, note, target calendar). The action "Open in calendar app" opens the calendar app with prefilled data (Android intent `ACTION_INSERT`); afterwards the todo is checked off.
+
+### 4.5 Activity view
+
+- Screen **"Aktivität"** in the app (Android and web), visible to both users. A chronological list of what happened to todos, **not** a list of notifications.
+- Events: created (by whom, or "System" for series instances), done, dismissed (incl. "durch neue Instanz ersetzt"), reopened, edited (field group), deleted, snoozed (who, todo or "alle überfälligen", duration), postponed (old → new date), "Mach ich", manual mode switches.
+- Filters: person (me / the other / system), event type, todo. Tapping opens the todo.
+- Stored in the synced table `activity_events`, written wherever the action is applied (sync push, web REST, worker). Time = (clock-corrected) time of the action; offline actions get a "nachträglich synchronisiert" marker. Deleted todos keep a title snapshot. The device keeps 90 days locally, older entries are paged from the server. The admin UI "Activity" page reads the same table.
 
 ---
 
@@ -241,17 +295,20 @@ All synced tables have `id` (UUID), `rev` (sequential number from `next_rev()`, 
 | Table | Content | Synced to app |
 |---|---|---|
 | `users` | accounts (2), role, time zone | own row + other user's name |
-| `user_settings` | quiet hours, summary times per weekday, intervals, DND bypass, theme | yes (own) |
-| `devices` | device, FCM token, app version, last sync | no |
+| `user_settings` | quiet hours and summary times per weekday, mode, mode end, mode schedule, all intervals (3.9), DND bypass, theme | own; mode, mode end and schedule also to the other user |
+| `activity_events` | activity view (4.5): actor, todo, type, parameters | yes (both users; device keeps 90 days) |
+| `devices` | device, FCM token, app version, last sync, notification permission and channel importance (`device_status`) | no |
 | `device_tokens` | refresh token hashes, rotation | no |
 | `web_sessions`, `login_approvals` | web sessions, pending login approvals | approvals yes |
 | `people` | Martin, his wife, child, household | yes |
 | `categories` | name, color, icon, sort order | yes |
 | `todos` | see section 4, incl. field-group timestamps | yes |
-| `todo_series` | rule, template, assignee mode | yes (read-only) |
-| `todo_snoozes` | "Snooze" per todo and user | yes |
+| `todo_series` | rule, template, assignee mode, `replace_open` | yes (read-only) |
+| `todo_snoozes` | "Snooze" per todo and user; `todo_id` NULL = combined overdue notification | yes |
+| `todo_claims` | "Mach ich" per explicit urgent todo and user | yes |
 | `notifications` | server-created notifications (activity, explicit urgent, system) | yes (addressed to me) |
 | `deliveries` | display key × device: planned, shown, opened, acknowledged | acks only device → server |
+| `alarm_firings` | per alarm firing: planned/actual time, alarm type, idle, network, pre-display sync result and duration | device → server only |
 | `calendar_sources` | Google calendar ID, color, who gets notified | yes (without credentials) |
 | `calendar_events` | cached events | yes (time window) |
 | `secrets` | encrypted configuration | no |
@@ -285,7 +342,7 @@ app/                      Expo app (TypeScript)
 ├─ theme/                 ThemeProvider; reads generated tokens from shared/design
 ├─ i18n/                  t() helper; reads shared/strings
 ├─ components/            base components: Button, Card, Text, Input, Badge, ListItem …
-├─ screens/               Todos, Calendar, Settings, Delivery, Pairing, Login
+├─ screens/               Todos, Activity, Calendar, Settings, Delivery, Pairing, Login
 ├─ data/
 │  ├─ repo.ts             shared interface and types (listTodos, saveTodo, completeTodo …)
 │  ├─ repo.native.ts      → Kotlin engine                     [Android]
@@ -396,7 +453,7 @@ Generated files are committed so the home server and CI need no extra step to ru
 7. Later (C3, admin UI → Settings): enter Google OAuth client → Google login → select and assign calendars → test fetch.
 
 ### Admin UI
-Delivery (per display and device) · Devices (pairing, lock, token status) · Statistics (delivery rate, delay median/p95, completed todos) · Activity · Conflicts · Logs (errors, calendar, FCM, audit) · Settings (secrets, calendars, users, defaults, level thresholds) · Tools (test notification, wake-up).
+Delivery (per display and device; alarm firings with pre-display sync success per device, alarm type and idle state) · Devices (pairing, lock, token status) · Statistics (delivery rate, delay median/p95, completed todos; **"Nerv-Level"**: notifications per user and day by class, snooze/postpone/"Mach ich"/Done-from-notification counts, warning when a channel was muted) · Activity · Conflicts · Logs (errors, calendar, FCM, audit) · Settings (secrets, calendars, users, defaults, level thresholds) · Tools (test notification, wake-up).
 
 ### Deployment and migrations
 - Coolify deploys only the `release` branch; only Martin moves it.

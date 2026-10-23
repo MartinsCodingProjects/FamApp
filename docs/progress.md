@@ -78,7 +78,8 @@ Every agent updates this file in the same PR as its work.
 | 3.8 | Engine II (summaries, nagging) | open | |
 | 3.9 | Watchdog for summaries | open | |
 | 3.10 | Series | open | |
-| 3.11 | Screenshots, C2 checklist | open | |
+| 3.11 | Activity view | open | |
+| 3.12 | Screenshots, C2 checklist | open | |
 
 ## Run 4: Calendar, web, admin
 

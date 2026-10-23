@@ -1,6 +1,6 @@
 # Decisions
 
-Status: 2026-10-22, all planning questions resolved (translated to English and codename changed to `famapp` on 2026-10-23). Pre-development review on 2026-10-23 closed the remaining gaps (section 10). This document records what was decided and why. README and BUILDPLAN build on it.
+Status: 2026-10-22, all planning questions resolved (translated to English and codename changed to `famapp` on 2026-10-23). Pre-development review on 2026-10-23 closed the remaining gaps (section 10); the nagging review on the same day reworked levels, nag times and snooze (section 11). This document records what was decided and why. README and BUILDPLAN build on it.
 
 Legend: ✅ decided by Martin · 🟡 proposal; implemented this way unless someone objects
 
@@ -107,6 +107,7 @@ Legend: ✅ decided by Martin · 🟡 proposal; implemented this way unless some
 
 - ✅ FCM only as a wake-up call (data message without content).
 - ✅ **Priority rule** (decided 2026-10-23): FCM may downgrade apps whose high-priority messages do not lead to visible notifications. Therefore **high priority only when the device is expected to show something now**: explicit urgent (new), login approval, activity notification due now, and watchdog retries for those. Everything else (status change → cancel nagging, settings/calendar changes, watchdog retries for summaries, heartbeat, test wake-ups without display) goes out as **normal priority** with a `collapse_key`.
+- ✅ **Every high-priority wake-up ends in a visible notification** (decided 2026-10-23, section 11): if the sync after a high-priority wake-up brings nothing new to show (typical case: watchdog retry for a display that was shown but whose ack got stuck), the engine silently re-posts the affected display with the same ID. Details: section 11.
 
 ## 5. Notifications
 
@@ -114,11 +115,12 @@ All times, intervals and switches in this section are **configurable per user in
 
 ### Quiet hours
 
-- ✅ Per user, default 22:00–06:00.
+- ✅ Per user, default 22:00–06:00. Since 2026-10-23 configurable **per weekday**, plus notification modes and a weekly mode schedule on top (section 12).
 - ✅ **During quiet hours: no nagging and no normal notifications.**
 - ✅ Only exception: an explicitly urgent todo that is **newly sent** during quiet hours appears **once**. Then it pauses; nagging starts when active time begins.
 - 🟡 This one-time night notification uses the high channel but does not bypass Do Not Disturb.
 - 🟡 Anything else that accumulates during quiet hours is delivered at the start of active time (see each class).
+- ✅ **The day starts with the first summary** (decided 2026-10-23, section 11): nagging (explicit and overdue) only runs inside the **nag window**, from the day's first summary until quiet hours start. Between the end of quiet hours and the first summary the quiet-hours rules for nagging and activity notifications still apply. Weekends start later automatically because summaries are per weekday.
 
 ### Classes
 
@@ -127,8 +129,8 @@ All times, intervals and switches in this section are **configurable per user in
 | **Summary** | local exact alarm at configured times; content built locally at display time | high | server watchdog checks the ack; wake-up after 15 min |
 | **Urgent (explicit)** | immediately via FCM wake-up → sync → display | own channel, bypass DND (configurable) | repeats (every 15 min) until done. During quiet hours only once when newly created, no nagging. |
 | **Scheduled reminder** | local alarm at `due_at` (optional lead time) | high | see "Scheduled todos" below |
-| **Urgent (time-based)** | local alarm when a horizon todo becomes "urgent", or a scheduled todo is past `due_at` | high | **one combined notification per user** for all time-based urgent/overdue todos, re-posted hourly until none are left. Not during quiet hours. |
-| **Normal** | FCM wake-up, may be batched | normal | collected during quiet hours, then delivered as one notification |
+| **Overdue (time-based)** | local alarm at the next overdue slot while a horizon todo is past `target_date` or a scheduled todo is past `due_at` | high | **one combined notification per user** for all overdue todos, at **4 overdue slots per day** inside the nag window (section 11). Todos that are only `due_soon` do not nag; they appear in summaries. |
+| **Normal** | FCM wake-up, may be batched | normal | collected during quiet hours and until the first summary, then delivered as part of the first summary |
 | **Calendar** | local alarms from calendar data | normal | evening before, morning of, start time (rules below) |
 
 ### Summaries
@@ -136,7 +138,8 @@ All times, intervals and switches in this section are **configurable per user in
 - ✅ Times configurable per user.
 - 🟡 Configurable per weekday (e.g. Mon–Fri 07:00/12:30/19:00, Sat–Sun 09:00/13:00/19:00); each time can be disabled individually.
 - ✅ Content: number of urgent todos with a mini preview, number of other todos, calendar events.
-- 🟡 Mini preview: up to 3 urgent todos (overdue first), the rest as "+ 2 more". Events: count for today, first event with time.
+- 🟡 Mini preview: up to 3 todos (explicit urgent first, then overdue, then `due_soon`), the rest as "+ 2 more". Events: count for today, first event with time.
+- ✅ (decided 2026-10-23, section 11) Summaries are the only notification that shows `due_soon` todos. The day's **first summary also carries the quiet-hours catch-up** ("Seit 22:00: 4 Änderungen"). If a day has no summary, the catch-up is its own notification at the end of quiet hours.
 - 🟡 Tapping opens the "Urgent" view.
 
 ### Urgent and nagging
@@ -144,20 +147,20 @@ All times, intervals and switches in this section are **configurable per user in
 - ✅ Both users may send urgent todos to the other, to themselves or to both.
 - ✅ **Does not stop when tapped, only when the todo is done.**
 - ✅ Explicitly urgent: repeats every 15 min (configurable).
-- ✅ Urgent through elapsed time: repeats once per hour (configurable).
-- ✅ **Both kinds pause during quiet hours.** Nagging resumes immediately when active time starts.
-- ✅ If an explicitly urgent todo is sent during the recipient's quiet hours, it appears once immediately (without nagging); nagging starts when their active time begins. The sender sees "Quiet hours until 06:00, then reminders every 15 min" in the app.
+- ~~✅ Urgent through elapsed time: repeats once per hour (configurable).~~ Replaced 2026-10-23 (section 11): only **overdue** todos nag, at 4 overdue slots per day; `due_soon` does not nag.
+- ✅ **Both kinds pause during quiet hours.** ~~Nagging resumes immediately when active time starts.~~ Changed 2026-10-23 (section 11): nagging resumes at the day's first summary.
+- ✅ If an explicitly urgent todo is sent during the recipient's quiet hours, it appears once immediately (without nagging); nagging starts when their nag window begins (first summary, section 11). The sender sees "Ruhezeit bis 07:00, danach Erinnerungen alle 15 Min." in the app (time = recipient's next nag window start).
 - ✅ Bypass Android Do Not Disturb: configurable per user. Only applies outside the user's own quiet hours.
 - ✅ Sent to "both": once one completes it, nagging stops for both.
-- ✅ **Snooze** for explicitly urgent todos: pauses nagging (default 30 min, configurable). Afterwards it continues until done.
-- 🟡 An explicitly urgent message is always a todo (kind `immediate`). Actions in the notification: "Done" and "Snooze"; for time-based ones "Done" and "Postpone".
-- ✅ **Time-based nagging is combined** (decided 2026-10-23): all time-based urgent and overdue todos of a user share **one** notification ("3 fällige Todos: …", up to 3 titles, overdue first), re-posted hourly with the same ID. Actions open the list; "Done"/"Postpone" per todo happen in the app. Explicitly urgent todos stay individual notifications (every 15 min, with "Done"/"Snooze").
+- ✅ **Snooze** for explicitly urgent todos: pauses nagging (default 30 min, configurable). Afterwards it continues until done. Extended 2026-10-23 (section 11): additionally "2 Std." and "Bis morgen", and snooze also exists for the combined overdue notification.
+- 🟡 An explicitly urgent message is always a todo (kind `immediate`). Actions in the notification: "Done", "Mach ich" and "Snooze" (section 11).
+- ✅ **Time-based nagging is combined** (decided 2026-10-23): all overdue todos of a user share **one** notification ("3 überfällige Todos: …", up to 3 titles, oldest first), re-posted at each overdue slot with the same ID. Tapping opens the list; "Done"/"Postpone" per todo happen in the app; the notification itself offers "Snooze 2 Std." / "Bis morgen". Explicitly urgent todos stay individual notifications (every 15 min, with "Done"/"Mach ich"/"Snooze").
 - 🟡 Technically the planner includes the next nag time of every open nagging todo in its single alarm (respecting quiet hours and snooze). When it is completed on one device, an FCM wake-up goes to all other devices, which cancel the alarm. Without a network it keeps nagging until sync brings the status. Snooze applies per user (synced so it pauses on all of that user's devices).
 - 🟡 DND bypass: own channel with `setBypassDnd(true)`. Android requires a one-time "Do Not Disturb access" grant; the app requests it in the setup flow.
 
 ### Normal
 
-- 🟡 Normal notifications during quiet hours are collected and shown as **one** notification at the start of active time ("Since 22:00: 4 changes").
+- 🟡 Normal notifications during quiet hours (and until the first summary) are collected and shown as **one** line in the day's first summary ("Since 22:00: 4 changes"); without a summary that day, as one notification at the end of quiet hours. The device builds this from the synced `notifications` rows, so it is a device-planned display covered by the summary watchdog.
 - 🟡 Outside quiet hours: several changes by the same person within 2 min are batched.
 - ✅ **Triggers** (decided 2026-10-23): only two actions of the other person create an activity notification for me:
   1. a new todo assigned to me or to both,
@@ -179,7 +182,7 @@ All times, intervals and switches in this section are **configurable per user in
 
 - ✅ Kinds: **scheduled** (exact time), **horizon** (mid/long term), **immediate/urgent**, **someday**.
 - ✅ Mid term: 1, 2, 3 or 4 weeks. Long term: 1, 2 or 3 months.
-- ✅ Long term automatically becomes mid term; mid term automatically becomes urgent.
+- ✅ Long term automatically becomes mid term; mid term automatically becomes due soon (level renamed from "urgent" on 2026-10-23, section 11).
 - ✅ No subtasks.
 - ✅ Categories optional. Initial ideas: Wohnung (home), Soziales (social), Kalender (calendar), Besorgung (errands).
 - ✅ Assignee: Martin, his wife, or both.
@@ -190,7 +193,7 @@ All times, intervals and switches in this section are **configurable per user in
 ### Scheduled todos
 
 - ✅ (decided 2026-10-23) A notification at `due_at`; optional lead time per todo (none / 15 min / 1 h / 1 day; default none) as an additional earlier notification.
-- ✅ If not done at `due_at`, the todo becomes `overdue` and joins the combined time-based nag notification (hourly) until done or postponed.
+- ✅ If not done at `due_at`, the todo becomes `overdue` and joins the combined overdue notification (at the overdue slots, section 11) until done or postponed.
 - 🟡 A `due_at` or lead time inside quiet hours: the reminder is still shown once at that time (the user picked the time explicitly), without DND bypass; nagging only starts when active time begins.
 
 ### Data model
@@ -216,7 +219,8 @@ todos
   content_changed_at, content_changed_by
   status_changed_at, status_changed_by
 
-todo_snoozes (todo_id, user_id, until)   -- "Snooze", per user
+todo_snoozes (todo_id, user_id, until)   -- "Snooze", per user; todo_id NULL = combined overdue notification (section 11)
+todo_claims  (todo_id, user_id, claimed_at) -- "Mach ich" on an explicit urgent todo (section 11)
 people       (id, name, user_id NULL)    -- Martin, wife, child, household
 categories   (id, slug, name, color, icon, sort_order, active)
 ```
@@ -227,15 +231,16 @@ categories   (id, slug, name, color, icon, sort_order, active)
 |---|---|
 | > 4 weeks | `long_term` |
 | 1 to 4 weeks | `mid_term` |
-| < 1 week | `urgent` (time-based, nags hourly) |
-| past | `overdue` (keeps nagging hourly) |
+| < 1 week | `due_soon` (renamed from `urgent` 2026-10-23; shown in summaries, **no nagging**) |
+| past | `overdue` (combined notification at the 4 overdue slots) |
+| kind `immediate` | explicit urgent; after the recipient's next quiet-hours start it counts as `overdue` (section 11) |
 | kind `someday` | someday (never changes) |
 | kind `scheduled` | scheduled; "today" on the day itself; `overdue` after `due_at` |
 | series instance | relative thresholds, see "Recurring todos" |
 
 - 🟡 Thresholds configurable centrally (admin UI).
-- 🟡 "Postpone" action: sets a new target date (1–4 weeks / 1–3 months from today), which also ends nagging.
-- 🟡 Sort order: overdue → urgent → scheduled today → mid term → long term → someday.
+- 🟡 "Postpone" action: sets a new target date (1–4 weeks / 1–3 months from today), which also ends nagging. For scheduled todos see section 11.
+- 🟡 Sort order: explicit urgent → overdue → due soon → scheduled today → mid term → long term → someday.
 
 ### Recurring todos
 
@@ -263,8 +268,8 @@ todo_series
 - 🟡 Rotating with stacked calendar-rule instances: the new instance goes to the person who did not complete the last **completed** instance.
 - 🟡 Dismissing an instance counts like completing it (the next instance is created) but does not count for rotation.
 - 🟡 Only the server creates instances. If completed offline, the next instance is created on the next sync, based on the corrected completion time.
-- 🟡 Every instance gets a `target_date` and moves through the levels (mid term → urgent → overdue). Whether a series creates horizon todos or scheduled todos (fixed time) is part of the template.
-- ✅ **Relative thresholds for series instances** (decided 2026-10-23): with the absolute "< 1 week" rule, "every 2 weeks" would nag for a full week each cycle. A series instance becomes `urgent` only in the **last 25 % of its interval**, at least 1 day before `target_date`. 🟡 Capped at the normal 1-week threshold, so "every 6 months" does not nag for 6 weeks. Before that it is `mid_term` (or `long_term` if > 4 weeks away). Covered by `shared/test-vectors/levels.json`.
+- 🟡 Every instance gets a `target_date` and moves through the levels (mid term → due soon → overdue). Whether a series creates horizon todos or scheduled todos (fixed time) is part of the template.
+- ✅ **Relative thresholds for series instances** (decided 2026-10-23): with the absolute "< 1 week" rule, "every 2 weeks" would be due soon for a full week each cycle. (Since section 11, `due_soon` no longer nags, so this now only decides when an instance shows up as "due soon" in the list and summaries.) A series instance becomes `due_soon` only in the **last 25 % of its interval**, at least 1 day before `target_date`. 🟡 Capped at the normal 1-week threshold, so "every 6 months" does not nag for 6 weeks. Before that it is `mid_term` (or `long_term` if > 4 weeks away). Covered by `shared/test-vectors/levels.json`.
 - ✅ **Editing a series** (decided 2026-10-23): template changes apply to future instances and to the open instance, unless that instance was edited individually. Pause: no new instances, the open one stays. Delete: the app asks whether the open instance should be deleted too.
 
 ### Categories
@@ -378,6 +383,141 @@ Gaps found before development started, decided by Martin. Decisions that change 
 - ✅ **One required check:** an always-running job `ci-gate` that depends on all other jobs and treats skipped jobs as OK. Branch protection requires only `ci-gate`, so path filters never block a merge.
 - ✅ **Signing key only in a GitHub Environment `release`**, restricted to the `release` branch, with Martin as required reviewer. PR and `main` builds are debug-signed and only exist as CI artifacts. Workflows from forks never get secrets.
 - ✅ Agents use **Martin's `gh` login** in code-server (no separate token). Accepted risk: agents technically have Martin's GitHub rights; the rules in `AGENTS.md` (never touch `release`, branch protection or other repos) apply.
+
+---
+
+## 11. Nagging review (2026-10-23)
+
+Review of the priority system against notification volume. Finding: the bigger risk is not lost notifications but too many. If the users mute the `due` channel, delivery reliability no longer matters. Decided by Martin; the earlier sections are marked where they changed.
+
+### Levels and what nags
+
+- ✅ **The computed level `urgent` is renamed `due_soon`** ("bald fällig"). "Urgent" now only means the explicit kind `immediate`. Levels: `long_term` / `mid_term` / `due_soon` / `overdue`.
+- ✅ **`due_soon` does not nag.** It shows in the list (sorted high) and in summaries. That also takes care of short series intervals (daily, every 3 days): they are `due_soon` most of the time, which no longer causes notifications.
+- ✅ **Only `overdue` nags**, as one combined notification per user, at **4 overdue slots per day** (replaces the hourly rhythm).
+
+### Nag window and overdue slots
+
+- ✅ **Nag window** = from the day's **first summary** until **quiet hours start**. Explicit and overdue nagging only happen inside it. Without a summary that day, the window starts at the end of quiet hours.
+- ✅ Before the first summary, the quiet-hours rules apply to nagging and activity notifications (an explicit urgent todo that is sent then appears once, without DND bypass; activity is collected). Scheduled reminders, calendar notifications and login approvals are unaffected (the user chose those times, or triggered the approval).
+- ✅ **Overdue slots are computed, not configured:** the nag window is cut at each summary time into gaps; while there are fewer than 4 gaps, the largest one is split in half; each slot is the midpoint of a gap, rounded to 5 min. Gaps shorter than 60 min get no slot (so every slot is ≥ 30 min from a summary). More than 4 gaps → the 4 largest get a slot.
+  - Example (quiet hours 22–06, summaries 07:00 / 12:30 / 19:00): window 07:00–22:00 → gaps 07:00–12:30, 12:30–19:00 (split at 15:45), 19:00–22:00 → slots **09:45, 14:10, 17:25, 20:30**.
+  - Without summaries that day: the window is split into 4 equal parts, slot = midpoint of each.
+- 🟡 A todo that becomes overdue between slots waits for the next slot (a scheduled todo has just had its `due_at` reminder; a horizon todo becomes overdue at midnight).
+- 🟡 Explicit urgent nagging stays every 15 min, counted from the time it was sent; outside the nag window it pauses, and at the window start the next 15-min step continues the rhythm.
+- 🟡 Due date semantics: a horizon todo is `overdue` from 00:00 (user's time zone) on the day after `target_date`; a scheduled todo from `due_at`.
+
+### Snooze
+
+- ✅ **Snooze options "2 Std." and "Bis morgen"** for both explicit urgent notifications (in addition to the 30-min default) and the **combined overdue notification**.
+- 🟡 "Bis morgen" = until the start of tomorrow's nag window.
+- 🟡 Combined snooze is stored per user in `todo_snoozes` with `todo_id = NULL` (synced, so it applies to all of that user's devices). It also covers todos that become overdue during the snooze.
+- 🟡 "2 Std." on the combined notification: all slots inside the snooze are skipped and replaced by **one** display at the snooze end (if it falls inside the nag window); if the next regular slot is less than 60 min after that, that slot is skipped too.
+
+### Explicit urgent todos
+
+- ✅ **Action "Mach ich"** (claim): the recipient confirms they are on it.
+  - Nagging for the claiming user slows to hourly (configurable).
+  - Sent to "both": the claimer takes over; nagging for the other user stops.
+  - The sender gets an activity notification ("{name}: Mach ich").
+  - Stored in `todo_claims`, synced; a later "Done" or "Dismiss" ends it as usual.
+- ✅ **Delivery status visible to the sender:** the todo shows per recipient "Zugestellt {time}" (shown on at least one device, from `deliveries`) and "Mach ich {time}". The server derives this and syncs it with the todo to the sender (read-only fields, no extra table on the device).
+- ✅ **End-of-day downgrade:** an open explicit urgent todo that has gone through the start of the recipient's quiet hours since it was sent counts as `overdue` from then on: it leaves the 15-min nag and joins the combined overdue notification. **Computed, not stored** (no write, no conflict); covered by the level vectors. A todo sent during quiet hours is only downgraded at the *next* quiet-hours start.
+
+### Postpone
+
+- ✅ Postpone also offers short options: **"Morgen"** and **"+3 Tage"**, in addition to 1–4 weeks / 1–3 months.
+- 🟡 For scheduled todos, postpone moves `due_at` by the same amount and keeps the time of day (a new reminder at the new `due_at`); a lead time stays relative to it.
+
+### Series
+
+- ✅ **New per-series flag "Neue Instanz ersetzt die offene"** (`replace_open`, default **on** for calendar rules; irrelevant for interval series, which never have two open instances). When the worker creates a new instance and the previous one is still open, the previous one is set to `dismissed` by the system. Like any dismiss it does not count for rotation, and it does not trigger an activity notification (no person acted). Turned off, instances stack as before.
+- 🟡 The relative thresholds stay but now only decide when an instance shows as `due_soon`. No extra rule for intervals ≤ 1 day is needed, because `due_soon` no longer nags.
+
+### Several notifications at the same moment
+
+- ✅ **One sound per alarm firing:** everything due at that minute is posted, but only the most important display plays a sound (explicit urgent > overdue > scheduled reminder > summary > calendar > activity > system); the rest post silently. This also avoids Android 15+ "notification cooldown" turning later ones down.
+
+### Push and sync
+
+- ✅ **Sync before display:** when the alarm fires and the device has network, the engine syncs first (timeout 5 s), then decides what to show. After the timeout it shows from local data. This stops nags for todos the other person already completed while the "cancel" wake-up (normal priority) is still held back by Doze.
+  - To verify at C1: how much network access each alarm type gets in Doze (`setAlarmClock` brings the device out of idle; check `setExactAndAllowWhileIdle`). Part of the alarm-type decision.
+- ✅ **Measure it** (decided 2026-10-23): the engine records every alarm firing (planned and actual time, alarm type, whether the device was idle/Doze, network available, sync result `ok` / `timeout` / `error` / `no_network`, sync duration) and sends it to the server through the outbox (operation `alarm_firing`, table `alarm_firings`, not synced back). The admin UI shows the share of firings whose sync finished within the timeout, per device and alarm type, split by idle/not idle.
+  - 🟡 So that alarms fire in Doze before Run 3 (no summaries or nags yet), the observation job (BUILDPLAN 2.12) also creates **device-planned test displays** (a scheduled server notification the device shows via its own alarm), several times a day, preferably at times when the phone is likely idle.
+  - **Decided at C1, together with the alarm type:**
+    1. default alarm type (as before);
+    2. if `setExactAndAllowWhileIdle()` wins but sync fails too often in Doze (🟡 threshold: under 95 % `ok` among idle firings with network): (a) `setAlarmClock()` only for alarms that show a nag or reminder, (b) accept occasional stale nags, or (c) a different timeout;
+    3. whether the up-to-5-second display delay is acceptable (from the measured sync durations).
+- ✅ **Re-post on high-priority wake-up:** if a high-priority wake-up leads to no new display (e.g. watchdog retry after the ack got stuck), the engine re-posts the affected display **silently** with the same ID. It picks the open display with a pending or just-sent ack; if there is none, the most recent active high-channel display. So every high-priority push is followed by a visible notification and FCM has no reason to deprioritize the app. FCM still carries only `{"t":"sync"}`.
+
+### Nagging metrics
+
+- ✅ **In the admin UI** (Statistics → "Nerv-Level"), not in the app: notifications per user and day by class, counts of snooze / postpone / "Mach ich" / Done-from-notification, and a warning when a channel was muted or set to a lower importance.
+- 🟡 Counts come from `deliveries` (already one record per display) and the sync operations. The device reports app notification permission and channel importance with each sync (a small `device_status` field on `devices`); a change to "muted" is logged.
+- 🟡 Checked at C2 together with the observation results. Rough target: no user gets more than ~10 nags on a normal day.
+
+---
+
+## 12. Notification modes, per-user settings, activity view (2026-10-23)
+
+Decided by Martin. Builds on section 11.
+
+### Three modes per user
+
+| Mode | German label | What notifies |
+|---|---|---|
+| `remind` (default) | "Erinnern" | everything as described in sections 5 and 11 (full nagging) |
+| `essentials` | "Nur Wichtiges" | summaries; activity notifications (new todo for me/both, completed/dismissed, "Mach ich"); explicit urgent **once** (no repetition); scheduled reminder and lead time **once**; calendar notifications; "Server nicht erreichbar"; login approvals. **No nagging:** no 15-min repeats, no overdue slots; overdue todos only appear in summaries |
+| `dnd` | "Nicht stören" | **nothing**, except web login approvals (only triggered by the user's own action) |
+
+- ✅ Modes are per user, synced, so they apply to all of that user's devices.
+- ✅ **Quiet hours keep applying on top** in `remind` and `essentials` (night rules from section 5). In `dnd` they do not matter.
+- ✅ **Manual switch with an end:** switching the mode by hand asks for the end: "1 Std." / "Bis morgen" (= start of tomorrow's nag window) / "Bis ich es ausschalte". The manual mode overrides the schedule until it ends.
+- ✅ **Weekly mode schedule:** per user, slots of (weekdays, start, end, mode `essentials` or `dnd`), e.g. Mon–Fri 09:00–17:00 "Nur Wichtiges". Outside slots the mode is `remind`.
+  - 🟡 Mode slots must not overlap each other (the app validates). They may overlap quiet hours; then both apply, and `dnd` beats everything.
+  - 🟡 **Effective mode** at time *t* = active manual mode, otherwise the schedule slot covering *t*, otherwise `remind`. One pure function in all three languages, covered by `shared/test-vectors/modes.json`.
+- ✅ **While not in `remind`, the app shows a permanent banner** ("Nicht stören bis 07:00", "Nur Wichtiges bis 17:00").
+- ✅ **The sender sees the recipient's mode:** when sending an explicit urgent todo to someone in `essentials` or `dnd`, the app shows e.g. "Martin: Nicht stören bis 07:00 – erst danach" or "Martin: Nur Wichtiges – erscheint einmal, keine Wiederholungen". So both users sync each other's mode, mode end and schedule (not the rest of the settings).
+- ✅ **End of `dnd`:** one catch-up notification with what happened in the meantime: activity, missed scheduled reminders (count), open explicit urgent and overdue count. If the end falls into quiet hours or before the first summary, this goes into the first summary instead. Explicit urgent todos that were sent during `dnd` and never shown then appear **once as their own notification**, and the rules of the new mode continue from there. Missed calendar notifications are dropped.
+- 🟡 After an `essentials` or `dnd` period ends during the day, nagging resumes right away (the next 15-min step / the next overdue slot); the "first summary" start only applies to the start of the day. Overdue slots inside `essentials`/`dnd` periods are dropped, not moved.
+- ✅ **"Bis ich es ausschalte" is allowed.** Risk: a forgotten `dnd` silences everything. Mitigation: the banner in the app, the other user sees the mode, and the admin UI shows it per user.
+- 🟡 **Push priority by mode:** the server knows each user's effective mode. A wake-up for a display the recipient will not see now (`dnd`, or a repeat in `essentials`) goes out as **normal** priority; otherwise the priority rule from section 4 applies.
+- 🟡 **Watchdog:** expected display keys depend on the effective mode at the planned time. Mode changes are stored with their timestamp (also in the activity view), so a change made offline corrects the "late/missing" status after the next sync instead of raising false alarms.
+
+### All intervals adjustable per user
+
+✅ Every user-facing time and interval is a per-user setting (`user_settings`, synced), with defaults set in the admin UI. The app's settings screen groups them:
+
+| Group | Setting | Default | Range (🟡) |
+|---|---|---|---|
+| Quiet hours | start/end **per weekday** | 22:00–06:00 every day | any; crossing midnight belongs to the start day |
+| Modes | weekly mode slots | none | see above |
+| Summaries | times per weekday, each can be disabled | Mon–Fri 07:00/12:30/19:00, Sat–Sun 09:00/13:00/19:00 | – |
+| Explicit urgent | repeat interval | 15 min | 5–60 min |
+| | interval after "Mach ich" | 60 min | 15–240 min |
+| | DND bypass | off | on/off |
+| Overdue | slots per day (placement stays computed, section 11) | 4 | 1–6 |
+| Snooze | short / long duration ("Bis morgen" is fixed) | 30 min / 2 h | 5–120 min / 1–8 h |
+| Scheduled | default lead time for new todos | none | none / 15 min / 1 h / 1 day |
+| Calendar | evening before, morning of, before start (each can be disabled) | 19:00 / 07:00 / at start | time / time / 0–60 min before |
+| Activity | batching window | 2 min | 0–10 min |
+| Theme | System / Light / Dark | System | – |
+
+- ✅ **Not per user, on purpose:**
+  - Level thresholds (`due_soon` < 1 week, series 25 %) stay central in the admin UI: both users see the same list, and a todo must not be "due soon" for one and "mid term" for the other.
+  - System timings (watchdog 2/10/60 min and 15 min, periodic sync 15 min, "server unreachable" 3 h, heartbeat 6 h) are admin settings.
+  - The 30 s undo stays fixed.
+- 🟡 Every setting and range is part of the shared test vectors, where it affects planner output (quiet hours per weekday, slot count, intervals).
+
+### Activity view (app, both users)
+
+- ✅ A new **"Aktivität"** screen in the app (Android and web), visible to both users: a chronological list of what happened to todos. **Not** a list of notifications.
+- ✅ **Events:** created (by whom, or "System" for series instances), done, dismissed (incl. "durch neue Instanz ersetzt"), reopened, edited (which field group, e.g. "Titel geändert", "Datum geändert"), deleted, snoozed (who, which todo or "alle überfälligen", duration), postponed (old → new date), "Mach ich", manual mode switches (mode and end; scheduled slots are not logged).
+- 🟡 Filters: person (me / the other / system), event type, todo. Tapping an event opens the todo (unless deleted).
+- 🟡 Stored server-side in a new synced table `activity_events` (id, rev, at, actor_user_id or NULL = system, todo_id, type, params JSON). Written wherever the action is applied: sync push, web REST, worker. `at` is the (clock-corrected) time of the action, so offline actions appear at the time they happened; they get a small "nachträglich synchronisiert" marker.
+- 🟡 Deleted todos: the event keeps a title snapshot in `params` so the entry stays readable. (This is data in the DB, not a log; the rule "no todo content in logs" is about application logs.)
+- 🟡 The device keeps the last 90 days locally (offline); older entries are loaded from the server page by page when online.
+- 🟡 The admin UI "Activity" page reads the same table. `audit_log` stays separate (security events).
 
 ---
 

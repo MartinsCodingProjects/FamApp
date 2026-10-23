@@ -105,7 +105,7 @@ Details: `BUILDPLAN.md` A6 and A7. Summary:
 - **Single-alarm planner:** always exactly one exact alarm for the next time.
 - **Only the server creates recurring instances.**
 - **Time only through the time provider** (backend and engine). Never call `datetime.now()`, `System.currentTimeMillis()` or similar directly in logic code.
-- Rules that exist in several languages (levels, quiet hours, nag times, rotation, RRULE, conflicts) are tested against **`shared/test-vectors/`**. Add new edge cases there, not just in one language.
+- Rules that exist in several languages (levels, quiet hours, modes, nag times, rotation, RRULE, conflicts) are tested against **`shared/test-vectors/`**. Add new edge cases there, not just in one language.
 
 ### Database (A7)
 - Only portable SQLAlchemy types, custom UTC `DateTime` type.
@@ -153,11 +153,15 @@ Details: `BUILDPLAN.md` A6 and A7. Summary:
 | User | one of the two app accounts (Martin, his wife). Martin is admin. |
 | Person | someone a todo is for (Martin, his wife, their child, household). No login. |
 | Assignee | a user or both (`NULL`) |
-| Level | `long_term` / `mid_term` / `urgent` / `overdue`, **computed**, never stored |
+| Level | `long_term` / `mid_term` / `due_soon` / `overdue`, **computed**, never stored. "Urgent" only means the explicit kind `immediate` |
 | Kind | `scheduled` / `horizon` / `immediate` / `someday` |
-| Nagging | repeated notification until "done" |
-| Snooze / Postpone | pause nagging for a while / set a new target date |
-| Quiet hours | per user, default 22:00–06:00 |
+| Nagging | repeated notification until "done": explicit urgent every 15 min, overdue as one combined notification at 4 overdue slots per day. `due_soon` never nags |
+| Nag window | from the day's first summary until quiet hours start; nagging only happens inside it |
+| Claim ("Mach ich") | recipient confirms an explicit urgent todo; nagging slows to hourly, the sender is told |
+| Snooze / Postpone | pause nagging (30 min / 2 Std. / Bis morgen; per todo, or for the combined overdue notification) / set a new target date or `due_at` |
+| Quiet hours | per user and weekday, default 22:00–06:00 |
+| Mode | per user: `remind` (full) / `essentials` (no nagging, everything once) / `dnd` (nothing); manual with an end, or from the weekly mode schedule |
+| Activity view | in-app list of todo events (created, done, snoozed …), table `activity_events`; not a notification list |
 | Display key | stable ID of a display, e.g. `nag:<todo-id>` (README 3.5) |
 | Checkpoint (C0–C3) | point where Martin has to do something himself |
 | Run (1–4) | a sequence of work packages agents complete without Martin |
