@@ -494,7 +494,7 @@ famapp/
 ├─ Makefile                 setup, dev, test, lint, tokens, e2e, apk
 ├─ branding.json            display name, short name, icon color (single place)
 ├─ docker-compose.dev.yml   local environment for machines with Docker (notebook, CI)
-├─ docs/                    decisions, specs, progress.md, assumptions.md, checkpoint lists
+├─ docs/                    decisions, specs, last-session.md, session-history.md, assumptions.md, checkpoint lists
 ├─ shared/
 │  ├─ strings/de.json       all user-facing text (single source, see 8.4)
 │  ├─ design/tokens.json    all design tokens (single source, see 8.2)

@@ -4,8 +4,11 @@ The plan is organized for **autonomous work by AI agents**. Martin only steps in
 
 ```
 👤 C0 prep ─► 🤖 Run 1 ─► 🤖 Run 2 ─► 👤 C1 first deploy ─► 🤖 Run 3 ─► 👤 C2 daily-use test ─► 🤖 Run 4 ─► 👤 C3 wrap-up
-  (3–4 h)      backend      engine        (2–3 h)               todos,       (1–2 h, runs in          calendar,     (2–3 h)
+  (30 min)     backend      engine        (2–3 h)               todos,       (1–2 h, runs in          calendar,     (2–3 h)
                core         + push                              series       parallel with Run 4)     web, admin
+                  ▲            ▲             ▲                                                                     ▲
+👤 M-tasks ───────┴─ M1 ───────┴─ M3–M6 ─────┘ ─────────────────────────────────────────────────── M8, M9 ──────────┘
+   (in parallel, about 3 h)
 ```
 
 👤 = Martin · 🤖 = agent · Afterwards: bug loop via GitHub issues.
@@ -32,7 +35,7 @@ The plan is organized for **autonomous work by AI agents**. Martin only steps in
 - The package's acceptance criterion exists as an **automated test**
 - Spec and docs up to date; new assumptions in `docs/assumptions.md`
 - Pull request with a **"For the next checkpoint"** section: what Martin should check on a real device or in production
-- `docs/progress.md` updated (package checked off, next package)
+- Checkboxes in Part B ticked (sub-tasks, package line with PR number); `docs/last-session.md` written and archived at the end of the session (`AGENTS.md`, "Ending a session")
 
 ### A3. When an agent stops and asks
 
@@ -48,10 +51,10 @@ Everything else the agent decides itself and records in `docs/assumptions.md`. M
 ### A4. Branches, deployment, secrets
 
 - Agents work on feature branches, one PR per work package. **Auto-merge into `main` when CI is green.** (Martin can merge every PR himself instead, at the cost of autonomy.)
-- **Coolify deploys only the `release` branch.** **Only Martin moves it** to the current `main` at checkpoints. At the end of a run the agent asks him (issue + note in `docs/progress.md`). Nothing reaches production unchecked.
+- **Coolify deploys only the `release` branch.** **Only Martin moves it** to the current `main` at checkpoints. At the end of a run the agent asks him (issue + note in `docs/last-session.md`). Nothing reaches production unchecked.
 - **Agents never get production secrets.** The APK signing key lives only in the GitHub Environment `release` (restricted to the `release` branch, Martin as required reviewer); PR and `main` builds are debug-signed. Optionally a separate dev Firebase project.
 - **One required check `ci-gate`:** an always-running job that depends on all other jobs and accepts skipped ones. Branch protection requires only this job, so path filters never block a merge.
-- Progress is visible in the repo: `docs/progress.md` plus PR history.
+- Progress is visible in the repo: checkboxes in Part B (status), `docs/last-session.md` (handover from the previous session, blockers), `docs/session-history.md` (archive) plus PR history.
 
 ### A5. Additions to the repository layout (README section 12)
 
@@ -63,7 +66,8 @@ Everything else the agent decides itself and records in `docs/assumptions.md`. M
 │  ├─ fake-fcm/
 │  └─ fake-gcal/            with fixtures
 ├─ docs/
-│  ├─ progress.md           status of the work packages
+│  ├─ last-session.md       handover from the previous session (status: BUILDPLAN Part B)
+│  ├─ session-history.md    archive of all handovers, newest first
 │  ├─ assumptions.md        decisions made by agents
 │  ├─ decisions.md          decision log with rationale
 │  └─ spec-*.md             specifications
@@ -112,12 +116,12 @@ Most engine logic is therefore developed in the fast local loop; only the Androi
 
 **CI minutes:** the repo is **public during development** (decided 2026-10-23), so standard runners are free and the emulator suite runs on every PR touching `app/`. **It is made private again at C3.** No secrets, personal data or todo contents in the repo, issues or logs. After going private: 2,000 Actions minutes per month on GitHub Free, 3,000 on Pro; an emulator run costs 15–25 minutes, so the rules below apply again.
 
-**No spending (set up in C0):**
+**No spending (M-task M9, at the latest before the repo goes private at C3):**
 
 - Do not add a payment method to the GitHub account. Without one nothing can be billed; once the free minutes are used up, runs no longer start until the next month.
 - If a payment method is on file anyway (e.g. for Copilot or Pro): under *Billing → Budgets and alerts*, create a budget for **Actions** of $0 with **"Stop usage when budget limit is reached"**.
 - Enable notifications at 75/90/100 % of the included minutes.
-- When minutes run out, agents keep working on the home server (backend, `engine-core`, web) and batch Android changes until CI runs again. This is noted in `docs/progress.md`.
+- When minutes run out, agents keep working on the home server (backend, `engine-core`, web) and batch Android changes until CI runs again. This is noted in `docs/last-session.md` (Open blockers).
 
 To make the minutes last (once the repo is private again):
 
@@ -152,86 +156,428 @@ If something shows up only on MariaDB, add a test case so CI catches it in the f
 
 ## Part B: Sequence
 
-### 👤 C0: Preparation (once, about 3–4 h)
+### How progress is tracked
 
-Everything that needs accounts, access or clicks in third-party UIs is bundled here. After this, Runs 1 to 4 can proceed without further account work.
+**The checkboxes in this part are the single place where status lives.** Agents and Martin tick them as they go; `docs/last-session.md` is the handover note between sessions (where the last one stopped, what needs Martin, open blockers).
 
-| # | Task | Result for the agents |
-|---|---|---|
-| 1 | Create GitHub repo, **make it public** (until C3), grant agent access, enable auto-merge and branch protection for `main` (required check: `ci-gate`); protect `release` (only Martin may push) | repo access |
-| 2 | Decide a display-name placeholder and subdomains (e.g. `famapp.cowflex.com`, `famapp-admin.cowflex.com`) | values for `branding.json` and docs |
-| 3 | Create the **APK signing key** (one file, keep it safe!, back it up twice) and add it as a secret of the GitHub Environment `release` (deployment branch: `release` only, required reviewer: Martin). Updates can only be installed if they are signed with the same key. | signed APKs from CI |
-| 4 | Create the **Firebase project** (package name `com.cowflex.famapp`), put `google-services.json` in the repo (not a secret), keep the service account key **locally with Martin** (it goes into the wizard at C1) | app can integrate FCM |
-| 5 | Optional: a second **dev Firebase project**, key as GitHub secret | agents can test real FCM delivery in the emulator |
-| 6 | **Google Cloud:** enable the Calendar API, OAuth consent screen "External", status "In production", scope `calendar.readonly`, OAuth client (web) with redirect `https://<admin-subdomain>/setup/google/callback`. Keep client ID/secret locally (they go into the admin UI at C3) | calendar integration prepared for Run 4 |
-| 7 | **Cloudflare:** DNS records for both subdomains (proxied), WAF skip rule for the app subdomain, Cloudflare Access (GitHub SSO) for the admin subdomain; note the team domain and the application's **audience (AUD) tag** | reachability |
-| 8 | **Coolify:** MariaDB resource (not public), Docker Compose resource from the repo, branch `release`, auto-deploy on push, environment variables `DATABASE_URL`, `MASTER_KEY`, `SETUP_TOKEN` (generate both randomly and store them safely), `CF_ACCESS_TEAM_DOMAIN`, `CF_ACCESS_AUD` (from item 7) | deployment |
-| 9 | On both phones allow "Install unknown apps" for the browser/file manager | APK installation at C1 |
-| 10 | **Secure GitHub costs:** no payment method, or Actions budget $0 with "Stop usage"; alerts at 75/90/100 % (see A6) | no costs |
-| 11 | In the code-server container: log in the GitHub CLI (`gh`) so agents can trigger and read CI runs | CI feedback for agents |
-| 12 | Cloudflare Tunnel: check that ports 8000, 5000 and 5173 are reachable for Martin | browser preview |
+| Marker | Meaning |
+|---|---|
+| `- [ ]` | open |
+| `- [ ] 🚧` | in progress (add your branch: `🚧 pkg/1.4-backend-skeleton`); remove 🚧 when ticking |
+| `- [x]` | done; packages also get the PR number (`· PR #12`) |
+| `- [ ] ⏸` | blocked; the reason is in `docs/last-session.md` → Open blockers |
 
-**Done when:** the agent confirms it has repo access and can see the CI secrets. The Coolify resource may still fail because there is no code yet.
+Rules:
+
+- **Sub-tasks (`1.4.3`) are separable.** Each one leaves the repo green (`make lint && make test`), is one or a few commits, and can be picked up by a new agent from the checkbox alone. Work them in order unless a sub-task says otherwise.
+- **One PR per package by default.** A large package may be split into several PRs along sub-task boundaries (branch `pkg/1.4.1-1.4.5-backend-skeleton`); each PR ticks only the sub-tasks it completes.
+- Tick sub-tasks **in the same PR** that completes them. Tick the package line (`**1.4 done**`) only when every sub-task is ticked, the acceptance test is green in CI and A2 is satisfied.
+- Tick the run line when every package is ticked.
+- Found work that is missing? Add a sub-task with the next free number (`1.4.13`) in the same PR and note why in the PR description. Never renumber existing sub-tasks.
+- Runs 3 and 4 have packages only. **The first package of each run breaks the remaining packages into sub-tasks** the same way (sub-task `3.0` / `4.0`).
+
+### Overview
+
+- [ ] 👤 C0 preparation (blocks Run 1)
+- [ ] 👤 M-tasks (Martin, in parallel, each due before the step that needs it)
+- [ ] 🤖 Run 1: Foundation and backend core
+- [ ] 🤖 Run 2: Engine, push and delivery
+- [ ] 👤 C1 first deployment
+- [ ] 🤖 Run 3: Todos, nagging, series
+- [ ] 👤 C2 daily-use test and design review
+- [ ] 🤖 Run 4: Calendar, web, admin, wrap-up
+- [ ] 👤 C3 wrap-up → MVP done after two weeks of daily use without a lost notification
+
+---
+
+### 👤 C0: Preparation (only what blocks Run 1, about 30 min)
+
+C0 contains **only** what Run 1 cannot start without. Everything else Martin does in parallel while the agents work (M-tasks below), each due before the step that really needs it.
+
+Not needed: subdomains are decided (`docs/decisions.md`); the display name is open but not blocking, so 1.1 uses a placeholder in `branding.json` and records it in `docs/assumptions.md`.
+
+- [x] **C0.1a** Create GitHub repo
+- [ ] **C0.1b** GitHub repo: **make it public** (until C3), enable auto-merge, protect `main` via a **ruleset** (require PR, required status check `ci-gate`, entered by name; it does not exist until the first PR)
+  *Blocks:* 1.2 CI incl. emulator job needs free minutes; auto-merge needs a required check.
+- [ ] **C0.2** In the code-server container: `gh` logged in with a token that can push and open PRs: Contents, Pull requests, Issues, **Workflows** (to push `.github/workflows/`) and Actions (read/write)
+  *Blocks:* every package needs PRs; 1.2 needs to push workflows and read CI runs.
+- [ ] **C0.3** (agent) Confirmed: the agent pushed a branch with a workflow file, opened a PR and read its CI run. Done as part of 1.1.
+
+**Done when:** C0.1b–C0.3 are ticked.
+
+### 👤 M-tasks: Martin, in parallel with the runs
+
+Martin ticks these. An agent may tick one if it can verify the result itself (e.g. `google-services.json` is in the repo).
+
+- [ ] **M1** Create the **Firebase project** (package name `com.cowflex.famapp`), put `google-services.json` in the repo (not a secret), keep the service account key **locally with Martin** (it goes into the wizard at C1)
+  *Due before:* **Run 2** (2.8 FCM) · *Result:* app can integrate FCM
+- [ ] **M2** Optional: a second **dev Firebase project**, key as GitHub secret
+  *Due before:* Run 2 (2.8, optional) · *Result:* agents can test real FCM delivery in the emulator
+- [ ] **M3** Create the **APK signing key** (one file, keep it safe!, back it up twice) and add it as a secret of the GitHub Environment `release` (deployment branch: `release` only, required reviewer: Martin) under the secret names the agent defines in 1.2 (`docs/release-signing.md`). Protect `release` (only Martin may push). Updates can only be installed if they are signed with the same key.
+  *Due before:* C1 · *Result:* signed APKs from CI
+- [ ] **M4** **Cloudflare:** DNS records for both subdomains (proxied), WAF skip rule for the app subdomain, Cloudflare Access (GitHub SSO) for the admin subdomain; note the team domain and the application's **audience (AUD) tag** (guide: `deploy/cloudflare.md`, written in 1.4)
+  *Due before:* C1 · *Result:* reachability
+- [ ] **M5** **Coolify:** MariaDB resource (not public), Docker Compose resource from the repo, branch `release`, auto-deploy on push, environment variables `DATABASE_URL`, `MASTER_KEY`, `SETUP_TOKEN` (generate both randomly and store them safely), `CF_ACCESS_TEAM_DOMAIN`, `CF_ACCESS_AUD` (from M4). The resource may fail until `release` has code.
+  *Due before:* C1 · *Result:* deployment
+- [ ] **M6** On both phones allow "Install unknown apps" for the browser/file manager
+  *Due before:* C1 · *Result:* APK installation
+- [ ] **M7** Cloudflare Tunnel: check that ports 8000, 5000 and 5173 are reachable for Martin
+  *Due before:* whenever Martin wants a browser preview · *Result:* browser preview
+- [ ] **M8** **Google Cloud:** enable the Calendar API, OAuth consent screen "External", status "In production", scope `calendar.readonly`, OAuth client (web) with redirect `https://<admin-subdomain>/setup/google/callback`. Keep client ID/secret locally (they go into the admin UI at C3)
+  *Due before:* C3 (Run 4 works against the fake) · *Result:* calendar integration
+- [ ] **M9** **Secure GitHub costs:** no payment method, or Actions budget $0 with "Stop usage"; alerts at 75/90/100 % (see A6)
+  *Due before:* C3 (repo goes private; public repos use free standard runners) · *Result:* no costs
+
+Run 1 notes M1 under Open blockers in `docs/last-session.md` if it is still missing; at the end of Run 1 the agent opens a `question` issue if M1 is not done. Run 2 can do 2.1–2.7 without it and only stops at 2.8.
 
 ---
 
 ### 🤖 Run 1: Foundation and backend core
 
-| ID | Work package | Automated acceptance criterion |
-|---|---|---|
-| 1.1 | Repo scaffold: structure, `Makefile`, lint (Ruff, ESLint, ktlint), `branding.json`, issue template; keep `AGENTS.md` and README in sync with the actual layout. **Central strings and tokens:** `shared/strings/de.json` (first keys), `shared/design/tokens.json` (base + semantic, light/dark, initial neutral palette), `tools/` with token generator (JS, CSS, Android XML) and string checks (missing/unused keys, placeholders, German literals in code), string test vectors | `make lint` and `make tokens` run; checks fail on a deliberately broken key or stale generated file |
-| 1.2 | CI: backend tests on SQLite **and** MariaDB (service container, see A7), lint, `pip-audit`, `npm audit`, APK build (debug-signed on PRs/`main`, release-signed only in Environment `release`), emulator job (empty at first), `ci-gate` job | CI green on the empty project; a PR that skips path-filtered jobs still merges |
-| 1.3 | Dev environment on the home server without Docker and without root (see A6): SQLite, `uv`, `fnm`, fake FCM, time provider in the backend, database layer with dialect modules (A7). Additionally `docker-compose.dev.yml` for machines with Docker (notebook, CI) | `make dev` starts on the home server; fake FCM accepts calls |
-| 1.4 | Backend skeleton: FastAPI, `/api/health` (503 until the schema matches), worker runs migrations under a DB lock on start, JSON logging, configuration, Dockerfile, `deploy/docker-compose.yml` (api + worker), app/admin host separation, Cloudflare Access JWT check on the admin host (off only with `FAMAPP_DEV=1`), Python `t()` helper reading `shared/strings`, admin base template using `tokens.generated.css` | health test; `t()` passes string vectors; image builds |
-| 1.5 | Expo project (**TypeScript**) with an empty local module `famapp-engine`, package name, native config only via config plugins in `app/plugins/`, `branding.json` wired in, TS `t()` helper and ThemeProvider reading the shared strings and generated tokens; Gradle step copying `de.json` into engine assets | APK builds; emulator starts the app and shows a string from `de.json` |
-| 1.6 | Spec `docs/spec-sync.md` | file exists, covers endpoints, operations, conflicts, error cases, protocol version header, minimum/latest app version, unknown fields |
-| 1.7 | Migrations: `users`, `user_settings`, `devices`, `device_tokens`, `notifications`, `deliveries`, `secrets`, `audit_log`, `conflict_log`, `job_log`, `rev_counter` with `next_rev()` | migration up/down on SQLite and MariaDB in CI |
-| 1.8 | Secret encryption (AES-GCM, `MASTER_KEY`) | round-trip and tampering tests |
-| 1.9 | Setup wizard (minimal): `SETUP_TOKEN`, admin account with password + TOTP, upload Firebase key, second account, lock | E2E test of the wizard against the dev DB |
-| 1.10 | Device auth: pairing code, pairing, access/refresh with rotation, generous reuse rule (decisions section 3), revocation, rate limits, client-IP rule (rightmost `X-Forwarded-For` → Cloudflare check → `CF-Connecting-IP`), audit log | tests: lost refresh response + retry, weeks offline, real token theft locks; spoofed `CF-Connecting-IP` from a non-Cloudflare address is ignored |
-| 1.11 | Sync: `GET /api/sync`, `POST /api/sync/push`, acks, server time, protocol version + minimum app version, `POST /api/devices/me/fcm-token`, admin CLI "test notification" | delta across several tables, pagination, tombstones, idempotency, concurrency, old protocol version still served, too-old app rejected |
+- [ ] **Run 1 done:** all packages ticked, CI green. No checkpoint needed; Run 2 starts directly.
 
-**Run done when:** all packages checked off, CI green. No checkpoint needed; Run 2 starts directly.
+#### 1.1 Repo scaffold
+
+*Acceptance (automated):* `make lint` and `make tokens` run; checks fail on a deliberately broken key or stale generated file.
+
+- [ ] 1.1.1 Directory skeleton per README 12 and A5 (`backend/`, `app/`, `shared/`, `tools/`, `dev/`, `deploy/`, `docs/`), `.gitignore` (`dev.db`, build output, key/keystore patterns), `.editorconfig`
+- [ ] 1.1.2 Minimal CI workflow `.github/workflows/ci.yml` with a lint job and the `ci-gate` job, so this first PR can satisfy the required check (1.2 extends it); confirms C0.3
+- [ ] 1.1.3 `branding.json` with a placeholder display name, short name, icon color; placeholder recorded in `docs/assumptions.md`
+- [ ] 1.1.4 `Makefile` with all targets from `AGENTS.md` (`setup`, `dev`, `test`, `lint`, `tokens`, `e2e`, `apk`); targets that are not built yet print which package adds them
+- [ ] 1.1.5 Lint configs: Ruff, ESLint (flat config), ktlint; all wired into `make lint`
+- [ ] 1.1.6 `shared/strings/de.json` with the first keys and the key naming convention (by area, plural forms) documented in a comment file or README section
+- [ ] 1.1.7 `shared/design/tokens.json`: base + semantic tokens, light/dark, initial neutral palette (incl. `color.state.urgent`, `color.state.offline`)
+- [ ] 1.1.8 Token generator in `tools/` → JS, CSS (`tokens.generated.css`), Android XML; `make tokens`; a check mode that fails on stale generated files, run by `make lint`
+- [ ] 1.1.9 String checks in `tools/`: missing/unused keys, placeholder mismatch, German literals in code; run by `make lint`
+- [ ] 1.1.10 String test vectors in `shared/test-vectors/strings/` (placeholders, plurals, missing key behavior), used by the `t()` helpers in 1.4, 1.5 and 2.2
+- [ ] 1.1.11 Issue templates (bug report per the bug loop, question) and labels `bug`, `question`
+- [ ] 1.1.12 `AGENTS.md` and README section 12 match the actual layout
+- [ ] 1.1.13 Acceptance tests for the tools: a broken key, a placeholder mismatch and a stale generated file each make the check fail
+- [ ] **1.1 done** · PR:
+
+#### 1.2 CI
+
+*Acceptance (automated):* CI green on the empty project; a PR that skips path-filtered jobs still merges.
+
+- [ ] 1.2.1 Change-detection job (outputs per area: `backend`, `app`, `shared`, `tools`, `docs`); all other jobs use job-level `if:` conditions, no workflow-level `paths:`
+- [ ] 1.2.2 Lint job running `make lint` (incl. token staleness and string checks)
+- [ ] 1.2.3 Backend test job on SQLite (`uv`, pytest; a placeholder test until 1.3)
+- [ ] 1.2.4 Backend test job on **MariaDB** (service container, collation `utf8mb4_unicode_ci`, `DATABASE_URL=mysql+pymysql://…`), also runs `@pytest.mark.mariadb` tests (A7)
+- [ ] 1.2.5 JS unit test job (skipped until `app/` has code)
+- [ ] 1.2.6 Audits: `pip-audit`, `npm audit` (fail level recorded in `docs/assumptions.md`)
+- [ ] 1.2.7 Architecture checks in `tools/`, run by `make lint`: raw SQL only in `backend/app/db/dialects/`, no direct clock calls in logic code, no DB access from JS
+- [ ] 1.2.8 APK build job: debug-signed on PRs and `main`, APK as CI artifact (skipped until 1.5 creates the Expo project)
+- [ ] 1.2.9 Release-signing workflow: runs only on `release`, inside Environment `release`; defines the signing secret names; fork PRs never get secrets
+- [ ] 1.2.10 `docs/release-signing.md`: how Martin creates the key, backs it up twice and adds the secrets (input for M3)
+- [ ] 1.2.11 Emulator job (KVM on standard runners), empty suite, only when `app/` changed
+- [ ] 1.2.12 `ci-gate` job: `if: always()`, needs every job, fails on `failure`/`cancelled`, accepts `skipped`
+- [ ] 1.2.13 Acceptance: a docs-only PR skips the path-filtered jobs and still merges; a full run on the empty project is green (both PR links noted in this PR)
+- [ ] **1.2 done** · PR:
+
+#### 1.3 Dev environment on the home server
+
+*Acceptance (automated):* `make dev` starts on the home server; fake FCM accepts calls.
+
+- [ ] 1.3.1 `make setup`: `uv`, pinned Python, `fnm` + pinned Node, optional JDK via SDKMAN; user space only, idempotent, no root
+- [ ] 1.3.2 Backend project: `backend/pyproject.toml`, `uv` lockfile with pinned dependencies, pytest config incl. the `mariadb` marker
+- [ ] 1.3.3 Time provider: `Clock` interface, system clock, controllable fake clock (set "now", fast-forward) as a pytest fixture
+- [ ] 1.3.4 Database layer: engine/session from `DATABASE_URL` (default `sqlite:///./dev.db`), custom UTC `DateTime` type, portable types only (A7)
+- [ ] 1.3.5 Dialect modules `backend/app/db/dialects/` (SQLite, MariaDB) and `db/locks.py` with one implementation per database (file lock / `GET_LOCK`)
+- [ ] 1.3.6 Test fixtures: fresh SQLite DB per test; same suite runs against MariaDB in CI
+- [ ] 1.3.7 Fake FCM in `dev/fake-fcm/` (port 9101): accepts the FCM v1 send shape, records messages, endpoints to query and reset them for tests
+- [ ] 1.3.8 `make dev` starts every service that exists (one process list; 1.4 adds api/worker/admin), `make test` runs the backend tests
+- [ ] 1.3.9 `docker-compose.dev.yml` (MariaDB + services) for machines with Docker (notebook, CI)
+- [ ] 1.3.10 Acceptance tests: `make dev` smoke test hits fake FCM; UTC round-trip and lock tests on SQLite (and MariaDB in CI)
+- [ ] **1.3 done** · PR:
+
+#### 1.4 Backend skeleton
+
+*Acceptance (automated):* health test; `t()` passes string vectors; image builds.
+
+- [ ] 1.4.1 Configuration (Pydantic settings): `DATABASE_URL`, `MASTER_KEY`, `SETUP_TOKEN`, `CF_ACCESS_TEAM_DOMAIN`, `CF_ACCESS_AUD`, `FAMAPP_DEV`, host names; fail fast on missing values outside dev
+- [ ] 1.4.2 JSON logging with request ID; no todo content in logs
+- [ ] 1.4.3 FastAPI app factory with app/admin **host separation** (dev: admin on port 5000); no `/docs` or `/openapi.json` in production
+- [ ] 1.4.4 Alembic (`render_as_batch=True`, empty baseline) and a "schema at head" check
+- [ ] 1.4.5 `/api/health`: 503 until the schema matches the code, 200 afterwards
+- [ ] 1.4.6 Worker entrypoint: runs migrations under the DB lock on start, then starts the (still empty) scheduler
+- [ ] 1.4.7 Cloudflare Access JWT check on the admin host (team keys fetched and cached, audience tag checked, 404 on missing/invalid; off only with `FAMAPP_DEV=1`); tests with locally signed tokens and a fake key set
+- [ ] 1.4.8 Python `t()` helper reading `shared/strings`, passing the string vectors
+- [ ] 1.4.9 Admin base template (Jinja2) using `tokens.generated.css`, htmx vendored
+- [ ] 1.4.10 Dockerfile (one non-root image for api and worker), `deploy/docker-compose.yml` (api + worker, env vars, health check)
+- [ ] 1.4.11 CI job: build the image and smoke-test it (container starts, `/api/health` returns 200)
+- [ ] 1.4.12 `deploy/cloudflare.md`: DNS, WAF skip and Access settings (input for M4)
+- [ ] **1.4 done** · PR:
+
+#### 1.5 Expo project and empty engine module
+
+*Acceptance (automated):* APK builds; emulator starts the app and shows a string from `de.json`.
+
+- [ ] 1.5.1 Expo project in `app/` (**TypeScript**, SDK pinned), package name `com.cowflex.famapp`, React Navigation shell
+- [ ] 1.5.2 `branding.json` wired into the app config (name, short name, icon color)
+- [ ] 1.5.3 Config plugin folder `app/plugins/`; generated `android/` is git-ignored and only produced by prebuild
+- [ ] 1.5.4 Local module `app/modules/famapp-engine` with `engine-core` and `engine-android` folders and one trivial bridge function
+- [ ] 1.5.5 Gradle step copying `de.json` into the engine assets
+- [ ] 1.5.6 TS `t()` helper (`app/i18n/`) passing the string vectors (Jest)
+- [ ] 1.5.7 ThemeProvider (`app/theme/`) reading the generated tokens, light/dark
+- [ ] 1.5.8 Start screen showing a string from `de.json` via `t()`
+- [ ] 1.5.9 APK job from 1.2.8 builds the real app
+- [ ] 1.5.10 Emulator E2E: the app starts and shows the string (E2E tool choice recorded in `docs/assumptions.md`)
+- [ ] **1.5 done** · PR:
+
+#### 1.6 Sync spec `docs/spec-sync.md`
+
+*Acceptance (automated):* file exists and covers endpoints, operations, conflicts, error cases, protocol version header, minimum/latest app version, unknown fields (a doc test checks the required sections).
+
+- [ ] 1.6.1 Endpoints, auth headers, request/response shapes (`GET /api/sync`, `POST /api/sync/push`, `POST /api/devices/me/fcm-token`)
+- [ ] 1.6.2 Delta: `since`/`limit`, ordering by `rev`, per-user visibility, tombstones, pagination
+- [ ] 1.6.3 Operations: create, change field group, change status, delete, ack, snooze, `device_status`, `alarm_firing`; op UUID and idempotency
+- [ ] 1.6.4 Conflicts: last-write-wins per field group, deletion wins, clock-skew correction, tie rule, conflict log
+- [ ] 1.6.5 Error cases: permanent rejection vs. retry, auth failures, too-old app, server errors; client behavior for each
+- [ ] 1.6.6 Versions: protocol version header, current + previous supported, minimum/latest app version, unknown fields and tables ignored
+- [ ] 1.6.7 Test scenario list used by 1.11 and 2.3; doc test for the required sections
+- [ ] **1.6 done** · PR:
+
+#### 1.7 Migrations
+
+*Acceptance (automated):* migration up/down on SQLite and MariaDB in CI.
+
+- [ ] 1.7.1 `rev_counter` and `next_rev()` per dialect (MariaDB `LAST_INSERT_ID(value+1)`, SQLite `UPDATE … RETURNING`); concurrency test marked `mariadb`
+- [ ] 1.7.2 Common columns for synced tables (`id`, `rev`, `created_at`, `updated_at`, `deleted_at`)
+- [ ] 1.7.3 `users`, `user_settings` (base fields; 3.2 extends them)
+- [ ] 1.7.4 `devices` (incl. app version, last sync, `device_status`), `device_tokens`
+- [ ] 1.7.5 `notifications`, `deliveries`
+- [ ] 1.7.6 `secrets`, `audit_log`, `conflict_log`, `job_log`
+- [ ] 1.7.7 Up/down test for every migration on both databases; check that flags destructive operations (A7: additive only)
+- [ ] **1.7 done** · PR:
+
+#### 1.8 Secret encryption
+
+*Acceptance (automated):* round-trip and tampering tests.
+
+- [ ] 1.8.1 AES-GCM module with `MASTER_KEY` (key format, random nonce, secret name as associated data, versioned ciphertext format)
+- [ ] 1.8.2 Secret store on `secrets`: set, get, exists; values never rendered in plain text; audit log entry on change
+- [ ] 1.8.3 Tests: round-trip, tampered ciphertext/nonce, swapped associated data, wrong key, missing `MASTER_KEY`
+- [ ] **1.8 done** · PR:
+
+#### 1.9 Setup wizard (minimal)
+
+*Acceptance (automated):* E2E test of the wizard against the dev DB.
+
+- [ ] 1.9.1 Wizard state and access: only with `SETUP_TOKEN` (constant-time compare, rate limited), unreachable after lock
+- [ ] 1.9.2 Step admin account: password (Argon2id) + TOTP enrolment with confirmation code
+- [ ] 1.9.3 Step Firebase service account: upload, validate JSON, store encrypted (the test-push button follows in 2.8)
+- [ ] 1.9.4 Step second account: name, time zone, default times
+- [ ] 1.9.5 Lock the wizard; admin login with password + TOTP
+- [ ] 1.9.6 All texts in `de.json`, templates use semantic tokens only
+- [ ] 1.9.7 E2E test of the full wizard flow against the dev DB (`make e2e`)
+- [ ] **1.9 done** · PR:
+
+#### 1.10 Device auth
+
+*Acceptance (automated):* tests: lost refresh response + retry, weeks offline, real token theft locks; spoofed `CF-Connecting-IP` from a non-Cloudflare address is ignored.
+
+- [ ] 1.10.1 Pairing codes: one-time, valid 10 min, stored hashed; created via admin CLI for now (admin UI page in 2.11)
+- [ ] 1.10.2 Pairing endpoint: creates the device, returns refresh + access token
+- [ ] 1.10.3 Access token (15 min) and the auth dependency for app endpoints
+- [ ] 1.10.4 Refresh rotation with the **generous reuse rule** (decisions section 3): previous token valid until the successor is used; an old token after that locks the device
+- [ ] 1.10.5 Revocation: lock a single device
+- [ ] 1.10.6 Client-IP rule: trust only Traefik, rightmost `X-Forwarded-For`, Cloudflare ranges → `CF-Connecting-IP`
+- [ ] 1.10.7 Rate limits and lockout on pairing, refresh and login, keyed by client IP
+- [ ] 1.10.8 Audit log for pairing, rotation anomalies, revocation
+- [ ] 1.10.9 Acceptance tests: lost response + retry, weeks offline, theft locks, spoofed header ignored
+- [ ] **1.10 done** · PR:
+
+#### 1.11 Sync endpoints
+
+*Acceptance (automated):* delta across several tables, pagination, tombstones, idempotency, concurrency, old protocol version still served, too-old app rejected.
+
+- [ ] 1.11.1 Protocol layer: version header (current + previous), minimum app version with a clear error, latest app version and server time in every response
+- [ ] 1.11.2 `GET /api/sync`: delta across all synced tables by `rev`, per-user visibility, tombstones, pagination
+- [ ] 1.11.3 `POST /api/sync/push`: operation dispatcher, idempotency by op UUID, per-op result (ok / rejected / retry), timestamps corrected by clock skew; handlers for `ack` (→ `deliveries`) and `device_status`; later runs register more operations
+- [ ] 1.11.4 `POST /api/devices/me/fcm-token`
+- [ ] 1.11.5 Admin CLI "test notification" (creates a notification; the FCM wake-up follows in 2.8)
+- [ ] 1.11.6 Acceptance tests incl. concurrent pushes (`mariadb` marker)
+- [ ] **1.11 done** · PR:
 
 ---
 
 ### 🤖 Run 2: Engine, push and delivery
 
-| ID | Work package | Automated acceptance criterion |
-|---|---|---|
-| 2.1 | Spec `docs/spec-engine.md` (Room schema and migration policy, planner, both alarm types, display keys, channels, actions, bridge, plan B `specialUse` foreground service) | file exists |
-| 2.2 | Module `engine-core` (pure Kotlin, see A6): time provider, test-vector loader, Kotlin `t()` helper (string vectors), Gradle build with little RAM. In CI additionally the Robolectric setup for `engine-android` | sample vector runs locally on the home server |
-| 2.3 | `engine-core`: sync logic (outbox, delta, clock skew, backoff, protocol version, "update available") against an HTTP interface; sync status (`online` / `offline` / `server_unreachable`, unsent count) as an event for the UI; outbox entries never expire, removed only after server confirmation, permanent rejections marked "failed" without blocking the queue. `engine-android`: Room schema (mirror re-synced on schema change, outbox/auth/sync state migrated), token storage in the Keystore, wiring to `engine-core` | `engine-core` tests locally against the real dev backend; `engine-android` in CI incl. a schema change that keeps the outbox; tests: outbox survives a simulated week without server and a restart, a rejected entry does not block the following ones |
-| 2.4 | **Planner** in `engine-core` (next time, everything due, catch-up, expiry). Setting the alarm in `engine-android`: both `setAlarmClock` and `setExactAndAllowWhileIdle`, switchable via engine setting (default decided at C1) | planner vectors incl. DST and time zones, locally |
-| 2.5 | Display: channels, stable IDs, `shown_at` + ack, receivers (alarm, boot, time change, update), WorkManager jobs, **sync before display** when the alarm fires (5 s timeout), **one sound per alarm firing**, report notification permission and channel importance with each sync (`device_status`), **record every alarm firing** (alarm type, idle, network, sync result and duration) and send it via the outbox (`alarm_firing`) | emulator: display after forced Doze, after reboot, after time zone change, without network |
-| 2.6 | JS bridge, pairing screen, raw "Delivery" screen, setup flow (permissions, battery, Samsung hints, check `USE_EXACT_ALARM`) | emulator: pairing against dev backend, status visible |
-| 2.7 | Worker with APScheduler, DB lock against double execution, job log | two worker instances in a test, job runs once |
-| 2.8 | FCM sending (data message, TTL, priority rule: high only when a display is expected now, otherwise normal + `collapse_key`), token maintenance; app: `FirebaseMessagingService` → sync, `onNewToken`, **silent re-post** when a high-priority wake-up brings nothing new to show | fake FCM records the wake-up; optionally real delivery in the emulator via dev Firebase |
-| 2.9 | Watchdog (2/10/60 min, "not delivered"), heartbeat (> 6 h); engine: "server unreachable" system notification (network available, sync failing for 3 h; extra sentence if urgent todos are waiting in the outbox) | time-controlled backend tests with a fast-forwarded clock; engine-core test: no notification while offline |
-| 2.10 | "Delivery" complete (all checks, buttons to system settings, local and server test), delay statistics | emulator test of the checks |
-| 2.11 | First admin UI pages: delivery, devices (generate pairing code, lock) | page tests (htmx endpoints) |
-| 2.12 | **Observation job** in the worker: sends test notifications to both users several times a day and creates **device-planned test displays** (shown via the device's own alarm, also at times the phone is likely idle), can be switched off; `alarm_firings` table; evaluation in the admin UI incl. **pre-display sync success per device, alarm type and idle state** and sync duration (median/p95) | job test with fast-forwarded clock; backend test: `alarm_firing` ops stored and aggregated |
-| 2.13 | Checklist `docs/checkpoint-c1.md`: exactly what Martin does at C1, step by step | file exists |
+- [ ] **Run 2 done:** all packages ticked, CI green (incl. emulator tests).
+- [ ] Agent asked Martin to move `release` to `main` (issue + note in `docs/last-session.md`) and stopped for C1.
 
-**Run done when:** all packages checked off, CI green (incl. emulator tests). The agent asks Martin to move `release` to `main` and stops for C1.
+#### 2.1 Engine spec `docs/spec-engine.md`
+
+*Acceptance (automated):* file exists (a doc test checks the required sections).
+
+- [ ] 2.1.1 Room schema and migration policy (mirror tables dropped and re-synced; outbox, auth, sync state migrated)
+- [ ] 2.1.2 Planner: sources, next-time computation, catch-up, expiry, re-plan triggers
+- [ ] 2.1.3 Both alarm types, the engine setting, default until C1
+- [ ] 2.1.4 Display keys → Android notification IDs; channels (versioned IDs, importance); actions
+- [ ] 2.1.5 Receivers, WorkManager jobs, sync before display, one sound per firing, `alarm_firing` recording
+- [ ] 2.1.6 Bridge API (functions, events, sync status) and how `repo.native.ts` uses it
+- [ ] 2.1.7 Plan B `specialUse` foreground service (specified only)
+- [ ] 2.1.8 Test strategy: what runs in `engine-core`, Robolectric and emulator; doc test for the required sections
+- [ ] **2.1 done** · PR:
+
+#### 2.2 `engine-core` foundation
+
+*Acceptance (automated):* sample vector runs locally on the home server.
+
+- [ ] 2.2.1 Gradle build for `engine-core` (pure Kotlin/JVM, `org.gradle.jvmargs=-Xmx1536m`, short daemon idle timeout), ktlint
+- [ ] 2.2.2 Time provider interface and fake clock
+- [ ] 2.2.3 Test-vector loader for `shared/test-vectors/` and one sample vector
+- [ ] 2.2.4 Kotlin `t()` helper passing the string vectors
+- [ ] 2.2.5 `make test` runs `engine-core`; CI job for `engine-core`
+- [ ] 2.2.6 `engine-android` Gradle module with Robolectric in CI (one smoke test)
+- [ ] **2.2 done** · PR:
+
+#### 2.3 Sync logic and Room
+
+*Acceptance (automated):* `engine-core` tests locally against the real dev backend; `engine-android` in CI incl. a schema change that keeps the outbox; tests: outbox survives a simulated week without server and a restart, a rejected entry does not block the following ones.
+
+- [ ] 2.3.1 core: `SyncApi` HTTP interface and an in-memory fake for tests
+- [ ] 2.3.2 core: outbox (never expires, removed only after confirmation, permanent rejection → "failed" without blocking the queue)
+- [ ] 2.3.3 core: delta apply (pagination, tombstones, rev cursor); push always followed by a fetch
+- [ ] 2.3.4 core: clock-skew offset and timestamp correction
+- [ ] 2.3.5 core: backoff, protocol version, too-old app error, "update available"
+- [ ] 2.3.6 core: sync status event (`online` / `offline` / `server_unreachable`, unsent count)
+- [ ] 2.3.7 core: integration test against the real dev backend (`make dev`)
+- [ ] 2.3.8 android: Room database (mirror tables, outbox, auth, sync state) with the migration policy from 2.1.1
+- [ ] 2.3.9 android: token storage in the Keystore, refresh flow
+- [ ] 2.3.10 android: wiring `engine-core` to Room and HTTP
+- [ ] 2.3.11 Acceptance tests: week without server + restart, rejected entry does not block, schema change keeps the outbox (CI)
+- [ ] **2.3 done** · PR:
+
+#### 2.4 Planner
+
+*Acceptance (automated):* planner vectors incl. DST and time zones, locally.
+
+- [ ] 2.4.1 core: display entry model, stable keys (README 3.5), notification ID derivation
+- [ ] 2.4.2 core: next time over all sources present so far (scheduled server notifications, test displays; later runs add sources)
+- [ ] 2.4.3 core: everything due, catch-up marked "late", expired entries discarded
+- [ ] 2.4.4 Planner vectors in `shared/test-vectors/` incl. DST and time-zone changes
+- [ ] 2.4.5 android: alarm scheduler with `setAlarmClock` and `setExactAndAllowWhileIdle`, switchable via engine setting; until C1: `setAlarmClock` for high priority, otherwise `setExactAndAllowWhileIdle`
+- [ ] **2.4 done** · PR:
+
+#### 2.5 Display, receivers, WorkManager
+
+*Acceptance (automated):* emulator: display after forced Doze, after reboot, after time zone change, without network.
+
+- [ ] 2.5.1 Channels with versioned IDs and importances, created on start
+- [ ] 2.5.2 Posting displays by key, `shown_at` stored, ack into the outbox
+- [ ] 2.5.3 Alarm receiver: **sync before display** (5 s timeout) → show everything due → re-plan
+- [ ] 2.5.4 **One sound per alarm firing** (priority order README 3.3), the rest silent
+- [ ] 2.5.5 Boot, time/time zone change and app update receivers → re-plan and catch up
+- [ ] 2.5.6 WorkManager periodic sync (15 min)
+- [ ] 2.5.7 Record every alarm firing (alarm type, idle, network, sync result and duration) → outbox op `alarm_firing`
+- [ ] 2.5.8 Report notification permission and channel importance with each sync (`device_status`)
+- [ ] 2.5.9 Config plugins: receivers and permissions (`USE_EXACT_ALARM`, `POST_NOTIFICATIONS`, `RECEIVE_BOOT_COMPLETED`)
+- [ ] 2.5.10 Emulator tests: forced Doze, reboot, time zone change, no network
+- [ ] **2.5 done** · PR:
+
+#### 2.6 Bridge, pairing, setup flow
+
+*Acceptance (automated):* emulator: pairing against dev backend, status visible.
+
+- [ ] 2.6.1 Bridge functions and events (pair, sync status, delivery status) and `data/repo.ts` + `repo.native.ts` for them
+- [ ] 2.6.2 Pairing screen
+- [ ] 2.6.3 Raw "Delivery" screen (status list)
+- [ ] 2.6.4 Setup flow: notification permission, exact alarms (`USE_EXACT_ALARM`), battery optimization, Samsung hints, auto-revoke
+- [ ] 2.6.5 All texts in `de.json`; screens use base components and semantic tokens
+- [ ] 2.6.6 Emulator test: pairing against the dev backend, status visible
+- [ ] **2.6 done** · PR:
+
+#### 2.7 Worker and job locks
+
+*Acceptance (automated):* two worker instances in a test, job runs once.
+
+- [ ] 2.7.1 APScheduler in the worker with a job registry
+- [ ] 2.7.2 DB lock per job via `db/locks.py` against double execution
+- [ ] 2.7.3 `job_log` entries (start, end, duration, error)
+- [ ] 2.7.4 Acceptance test: two worker instances, job runs once (SQLite locally, MariaDB in CI)
+- [ ] **2.7 done** · PR:
+
+#### 2.8 FCM (needs M1)
+
+*Acceptance (automated):* fake FCM records the wake-up; optionally real delivery in the emulator via dev Firebase (M2).
+
+- [ ] 2.8.1 Sender interface: real (`firebase-admin`, service account from the secret store) and fake (`dev/fake-fcm`)
+- [ ] 2.8.2 Data message `{"t":"sync"}`, TTL, **priority rule** as a pure function (high only when a display is expected now, otherwise normal + `collapse_key`) with tests
+- [ ] 2.8.3 Token maintenance: invalid/unregistered tokens marked, devices without a valid token visible
+- [ ] 2.8.4 Wake-ups on new notifications and status changes; test-push button in the wizard (1.9.3) and admin CLI (1.11.5)
+- [ ] 2.8.5 App: `google-services.json`, FCM config plugin, `FirebaseMessagingService` → sync, `onNewToken` → `POST /api/devices/me/fcm-token`
+- [ ] 2.8.6 **Silent re-post** when a high-priority wake-up brings nothing new (logic in `engine-core`, posting in `engine-android`)
+- [ ] 2.8.7 Acceptance tests with fake FCM; optional real delivery via dev Firebase
+- [ ] **2.8 done** · PR:
+
+#### 2.9 Watchdog and heartbeat
+
+*Acceptance (automated):* time-controlled backend tests with a fast-forwarded clock; engine-core test: no notification while offline.
+
+- [ ] 2.9.1 Watchdog job (every minute): server notifications without ack → wake-ups after 2, 10, 60 min, then "not delivered"
+- [ ] 2.9.2 Heartbeat: device without sync for > 6 h outside quiet hours → notice to the other person and in the admin UI
+- [ ] 2.9.3 Engine: "Server nicht erreichbar" system notification (network available, sync failing for 3 h, once then after 24 h; extra sentence if urgent todos wait in the outbox)
+- [ ] 2.9.4 Acceptance tests: backend with fast-forwarded clock; `engine-core`: no notification while offline
+- [ ] **2.9 done** · PR:
+
+#### 2.10 "Delivery" screen complete
+
+*Acceptance (automated):* emulator test of the checks.
+
+- [ ] 2.10.1 All checks from README 3.8 via the bridge
+- [ ] 2.10.2 Buttons that open the matching system settings
+- [ ] 2.10.3 Local test notification in 10 s and server test wake-up
+- [ ] 2.10.4 Delay statistics for the last 50 displays
+- [ ] 2.10.5 Emulator test of the checks
+- [ ] **2.10 done** · PR:
+
+#### 2.11 Admin UI: delivery, devices
+
+*Acceptance (automated):* page tests (htmx endpoints).
+
+- [ ] 2.11.1 Admin layout and navigation on top of the 1.9 login
+- [ ] 2.11.2 Devices page: last sync, app version, FCM token status, generate pairing code, lock device
+- [ ] 2.11.3 Delivery page: status per notification and device, delay, watchdog retries
+- [ ] 2.11.4 Page tests for the htmx endpoints
+- [ ] **2.11 done** · PR:
+
+#### 2.12 Observation job
+
+*Acceptance (automated):* job test with fast-forwarded clock; backend test: `alarm_firing` ops stored and aggregated.
+
+- [ ] 2.12.1 `alarm_firings` table and the `alarm_firing` op handler
+- [ ] 2.12.2 Observation job: test notifications to both users several times a day; on/off switch
+- [ ] 2.12.3 **Device-planned test displays** (scheduled server notifications shown via the device's own alarm, also at likely-idle times)
+- [ ] 2.12.4 Admin evaluation: delivery rate, delay median/p95, **pre-display sync success per device, alarm type and idle state**, sync duration median/p95
+- [ ] 2.12.5 Acceptance tests
+- [ ] **2.12 done** · PR:
+
+#### 2.13 Checklist `docs/checkpoint-c1.md`
+
+*Acceptance (automated):* file exists.
+
+- [ ] 2.13.1 Step-by-step guide for C1 (below), written as checkboxes, incl. the hardware test list and the alarm-type decision criteria
+- [ ] 2.13.2 Open the issue asking Martin to move `release`
+- [ ] **2.13 done** · PR:
 
 ---
 
 ### 👤 C1: First deployment (about 2–3 h + one week in the background)
 
-The agent provides an exact step-by-step guide in `docs/checkpoint-c1.md`. Contents:
+The agent provides an exact step-by-step guide in `docs/checkpoint-c1.md`.
 
-1. Check that Coolify has deployed the `release` state and `/api/health` responds.
-2. **Setup wizard** on the admin subdomain: admin account + TOTP, upload Firebase service account, test push, create second account.
-3. **Install the APK on both phones**, pair with a pairing code, go through the setup flow (incl. Samsung battery settings).
-4. "Delivery" on both devices: everything green?
-5. **Hardware tests** the emulator does not cover (list in the checkpoint document), among them:
-   - natural Doze: leave the phone untouched for 2 h
-   - Samsung-specific behavior, app reinstalled
-   - real FCM latency on mobile networks
-   - **decide the alarm type**: run a few days with each (`setAlarmClock` vs `setExactAndAllowWhileIdle`), check the status-bar icon, lock screen/watch "next alarm" and DND schedules, and the **pre-display sync success** in the admin UI (idle firings with network: target ≥ 95 % `ok`). After the observation week set the default; if `setExactAndAllowWhileIdle` wins but misses the sync target, choose a fallback (decisions section 11: `setAlarmClock` only for nag/reminder alarms, accept stale nags, or change the timeout)
-6. **Switch on the observation job.** It runs for a week while Run 3 is already working. Martin only checks the admin UI now and then.
-7. File anything unusual as a GitHub issue (template provided); review the assumptions in `docs/assumptions.md`.
+- [ ] C1.1 Coolify has deployed the `release` state and `/api/health` responds
+- [ ] C1.2 **Setup wizard** on the admin subdomain: admin account + TOTP, upload Firebase service account, test push, create second account
+- [ ] C1.3 **APK installed on both phones**, paired with a pairing code, setup flow done (incl. Samsung battery settings)
+- [ ] C1.4 "Delivery" on both devices: everything green
+- [ ] C1.5 **Hardware tests** the emulator does not cover (list in the checkpoint document), among them:
+  - [ ] natural Doze: phone untouched for 2 h
+  - [ ] Samsung-specific behavior, app reinstalled
+  - [ ] real FCM latency on mobile networks
+  - [ ] **alarm type decided**: a few days with each (`setAlarmClock` vs `setExactAndAllowWhileIdle`), status-bar icon, lock screen/watch "next alarm" and DND schedules checked, **pre-display sync success** in the admin UI (idle firings with network: target ≥ 95 % `ok`). Default set after the observation week; if `setExactAndAllowWhileIdle` wins but misses the sync target, fallback chosen (decisions section 11: `setAlarmClock` only for nag/reminder alarms, accept stale nags, or change the timeout)
+- [ ] C1.6 **Observation job switched on.** It runs for a week while Run 3 is already working; Martin checks the admin UI now and then
+- [ ] C1.7 Anything unusual filed as a GitHub issue; assumptions in `docs/assumptions.md` reviewed
 
 **Done when:** both phones are paired, hardware tests done or filed as issues, observation running. Run 3 can start.
 
@@ -241,41 +587,53 @@ The agent provides an exact step-by-step guide in `docs/checkpoint-c1.md`. Conte
 
 Open issues from C1 take priority over new packages.
 
-| ID | Work package | Automated acceptance criterion |
-|---|---|---|
-| 3.1 | Spec `docs/spec-todos.md`, test vectors for levels (incl. `due_soon`, end-of-day downgrade of explicit urgent), quiet hours per weekday, **modes** (effective mode, manual end, schedule, `dnd` catch-up), per-user intervals, nag window, overdue slots, snooze (2 Std./Bis morgen, combined), nag times, rotation, RRULE, conflicts | vectors exist and load in all three languages |
-| 3.2 | Backend: migrations (`people`, `categories`, `todos`, `todo_series` incl. `replace_open`, `todo_snoozes` incl. combined snooze, `todo_claims`, `activity_events`; `user_settings` extended with mode, mode end, mode schedule and all per-user intervals), seed data, **activity events written for every todo action** (push, REST, worker), sync operations, conflict logic per field group, conflict log | conflict scenarios (completed offline + title changed, delete vs. edit, clock skew) |
-| 3.3 | Backend: activity notifications (only: new todo for me/both; completed/dismissed for me/both or created by me; "Mach ich" on my urgent todo) with batching and collection until the first summary, explicit urgent incl. the night special case, claims, per-recipient delivery status for the sender, wake-up on status change of nagging todos, **mode-aware** sending (no display expected → normal priority) | tests with fast-forwarded clock; edits/deletions do not notify |
-| 3.4 | Design system: final semantic token set in `shared/design/tokens.json` (light/dark), base components, navigation, `repo.ts` + `repo.native.ts`; a hidden "design preview" screen showing all base components and tokens | component tests, screenshot tests in the emulator (light/dark) |
-| 3.5 | Engine: Room tables and sync for todos, people, categories, series, snoozes, settings; bridge functions | JVM tests |
-| 3.6 | App: settings (quiet hours per weekday, summary times per weekday, **all per-user intervals** with ranges, DND bypass, theme), **mode switch** with end (1 Std. / Bis morgen / Bis ich es ausschalte), **weekly mode schedule**, mode banner, recipient's mode shown when sending urgent | emulator: change a setting → second test client sees it |
-| 3.7 | App: todo list (all todos visible, filters mine/both/other's), detail, create/edit (scheduled with optional lead time), complete, dismiss, reopen, postpone (incl. "Morgen"/"+3 Tage", scheduled todos), "send urgent" with delivery status ("Zugestellt"/"Mach ich"), level computation in TS; **offline banner** on every screen while sync fails (base component, text from `de.json`, unsent count); **"Noch nicht gesendet" marker** on todos with unconfirmed changes (prominent for urgent todos sent to the other person); "failed" state with retry/discard | E2E in the emulator: backend stopped → banner visible while editing, change kept; backend back → change synced, banner and marker gone; urgent todo sent while backend is down shows the prominent marker |
-| 3.8 | **Engine II:** summaries (incl. `due_soon` and the quiet-hours catch-up in the first summary), scheduled reminders (lead time, at `due_at`), nagging (explicit per todo incl. "Mach ich"; overdue as **one combined notification per user** at the 4 computed slots), nag window, quiet hours, **modes** (`remind` / `essentials` / `dnd`, schedule, `dnd` catch-up), snooze (30 min / 2 Std. / Bis morgen, combined), DND bypass, actions from the notification incl. 30 s undo | planner vectors; emulator: "Done" action without the app open stops nagging, undo restores it |
-| 3.9 | Watchdog for all device-planned displays (summaries, nags, scheduled reminders; calendar in 4.5): server computes expected keys with the shared vectors (mode-aware, using the mode valid at the planned time), delivery records per repetition | backend test with fast-forwarded clock |
-| 3.10 | Series: UI with pickers, RRULE in the client, validation and instance creation in the worker, rotation, dismissed rule, `replace_open` (default on for calendar rules), relative level thresholds, reopen removes untouched next instance, edit/pause/delete rules | vectors (incl. relative thresholds); "every 2 weeks, rotating" and "every 1st Monday" as E2E |
-| 3.11 | **Activity view** "Aktivität": list, filters (person, type, todo), tap opens todo, "nachträglich synchronisiert" marker, 90-day local window + server paging; engine: Room table and sync for `activity_events` | E2E: complete, snooze, postpone on device A → events with actor and time on device B; offline action shows the marker after sync |
-| 3.12 | Screenshots of all screens (light and dark) as CI artifact, checklist `docs/checkpoint-c2.md` | artifact exists |
+- [ ] **Run 3 done:** all packages ticked, CI green.
+- [ ] Agent asked Martin to move `release` to `main` and reported C2. **It does not stop** but starts Run 4 right away (C2 blocks nothing).
 
-**Run done when:** all packages checked off, CI green. The agent asks Martin to move `release` to `main` and reports C2. **It does not stop** but starts Run 4 right away (C2 blocks nothing).
+- [ ] **3.0** Break 3.1–3.12 into sub-tasks in this file (same format as Runs 1 and 2)
+- [ ] **3.1** Spec `docs/spec-todos.md`, test vectors for levels (incl. `due_soon`, end-of-day downgrade of explicit urgent), quiet hours per weekday, **modes** (effective mode, manual end, schedule, `dnd` catch-up), per-user intervals, nag window, overdue slots, snooze (2 Std./Bis morgen, combined), nag times, rotation, RRULE, conflicts · PR:
+  *Acceptance:* vectors exist and load in all three languages
+- [ ] **3.2** Backend: migrations (`people`, `categories`, `todos`, `todo_series` incl. `replace_open`, `todo_snoozes` incl. combined snooze, `todo_claims`, `activity_events`; `user_settings` extended with mode, mode end, mode schedule and all per-user intervals), seed data, **activity events written for every todo action** (push, REST, worker), sync operations, conflict logic per field group, conflict log · PR:
+  *Acceptance:* conflict scenarios (completed offline + title changed, delete vs. edit, clock skew)
+- [ ] **3.3** Backend: activity notifications (only: new todo for me/both; completed/dismissed for me/both or created by me; "Mach ich" on my urgent todo) with batching and collection until the first summary, explicit urgent incl. the night special case, claims, per-recipient delivery status for the sender, wake-up on status change of nagging todos, **mode-aware** sending (no display expected → normal priority) · PR:
+  *Acceptance:* tests with fast-forwarded clock; edits/deletions do not notify
+- [ ] **3.4** Design system: final semantic token set in `shared/design/tokens.json` (light/dark), base components, navigation, `repo.ts` + `repo.native.ts`; a hidden "design preview" screen showing all base components and tokens · PR:
+  *Acceptance:* component tests, screenshot tests in the emulator (light/dark)
+- [ ] **3.5** Engine: Room tables and sync for todos, people, categories, series, snoozes, settings; bridge functions · PR:
+  *Acceptance:* JVM tests
+- [ ] **3.6** App: settings (quiet hours per weekday, summary times per weekday, **all per-user intervals** with ranges, DND bypass, theme), **mode switch** with end (1 Std. / Bis morgen / Bis ich es ausschalte), **weekly mode schedule**, mode banner, recipient's mode shown when sending urgent · PR:
+  *Acceptance:* emulator: change a setting → second test client sees it
+- [ ] **3.7** App: todo list (all todos visible, filters mine/both/other's), detail, create/edit (scheduled with optional lead time), complete, dismiss, reopen, postpone (incl. "Morgen"/"+3 Tage", scheduled todos), "send urgent" with delivery status ("Zugestellt"/"Mach ich"), level computation in TS; **offline banner** on every screen while sync fails (base component, text from `de.json`, unsent count); **"Noch nicht gesendet" marker** on todos with unconfirmed changes (prominent for urgent todos sent to the other person); "failed" state with retry/discard · PR:
+  *Acceptance:* E2E in the emulator: backend stopped → banner visible while editing, change kept; backend back → change synced, banner and marker gone; urgent todo sent while backend is down shows the prominent marker
+- [ ] **3.8** **Engine II:** summaries (incl. `due_soon` and the quiet-hours catch-up in the first summary), scheduled reminders (lead time, at `due_at`), nagging (explicit per todo incl. "Mach ich"; overdue as **one combined notification per user** at the 4 computed slots), nag window, quiet hours, **modes** (`remind` / `essentials` / `dnd`, schedule, `dnd` catch-up), snooze (30 min / 2 Std. / Bis morgen, combined), DND bypass, actions from the notification incl. 30 s undo · PR:
+  *Acceptance:* planner vectors; emulator: "Done" action without the app open stops nagging, undo restores it
+- [ ] **3.9** Watchdog for all device-planned displays (summaries, nags, scheduled reminders; calendar in 4.5): server computes expected keys with the shared vectors (mode-aware, using the mode valid at the planned time), delivery records per repetition · PR:
+  *Acceptance:* backend test with fast-forwarded clock
+- [ ] **3.10** Series: UI with pickers, RRULE in the client, validation and instance creation in the worker, rotation, dismissed rule, `replace_open` (default on for calendar rules), relative level thresholds, reopen removes untouched next instance, edit/pause/delete rules · PR:
+  *Acceptance:* vectors (incl. relative thresholds); "every 2 weeks, rotating" and "every 1st Monday" as E2E
+- [ ] **3.11** **Activity view** "Aktivität": list, filters (person, type, todo), tap opens todo, "nachträglich synchronisiert" marker, 90-day local window + server paging; engine: Room table and sync for `activity_events` · PR:
+  *Acceptance:* E2E: complete, snooze, postpone on device A → events with actor and time on device B; offline action shows the marker after sync
+- [ ] **3.12** Screenshots of all screens (light and dark) as CI artifact, checklist `docs/checkpoint-c2.md` · PR:
+  *Acceptance:* artifact exists
 
 ---
 
 ### 👤 C2: Daily-use test and design review (about 1–2 h, in parallel with Run 4)
 
-1. Install the app update on both phones.
-2. Review the **design** from the screenshots, the design preview screen and on the device; review the **wording** in `shared/strings/de.json`. File change requests as issues ("colors", "spacing", "wording" …), or edit the two files directly. Usually nothing else is affected.
-3. **Test together with his wife** (list in `docs/checkpoint-c2.md`):
-   - send urgent todos back and forth, nagging, "Snooze", "Done" on one device stops the other
-   - send to "both"
-   - send in the evening → one notification, nagging from the first summary
-   - "Mach ich", snooze "2 Std." / "Bis morgen", sender sees "Zugestellt"
-   - modes: "Nur Wichtiges" (urgent shows once), "Nicht stören" until a time (nothing, then one catch-up), a weekly mode slot; sender sees the recipient's mode
-   - activity view: actions of the other person appear with name and time
-   - check the "Nerv-Level" statistics in the admin UI: notifications per day feel right, no channel muted
-   - watch the summaries for a few days
-   - one recurring task with rotation
-4. Check the result of the observation week in the admin UI: target 100 % shown, 95 % within 60 s.
-5. File problems as issues.
+- [ ] C2.1 App update installed on both phones
+- [ ] C2.2 **Design** reviewed from the screenshots, the design preview screen and on the device; **wording** in `shared/strings/de.json` reviewed. Change requests filed as issues ("colors", "spacing", "wording" …) or the two files edited directly
+- [ ] C2.3 **Tested together with his wife** (list in `docs/checkpoint-c2.md`):
+  - [ ] urgent todos back and forth, nagging, "Snooze", "Done" on one device stops the other
+  - [ ] send to "both"
+  - [ ] send in the evening → one notification, nagging from the first summary
+  - [ ] "Mach ich", snooze "2 Std." / "Bis morgen", sender sees "Zugestellt"
+  - [ ] modes: "Nur Wichtiges" (urgent shows once), "Nicht stören" until a time (nothing, then one catch-up), a weekly mode slot; sender sees the recipient's mode
+  - [ ] activity view: actions of the other person appear with name and time
+  - [ ] "Nerv-Level" statistics in the admin UI: notifications per day feel right, no channel muted
+  - [ ] summaries watched for a few days
+  - [ ] one recurring task with rotation
+- [ ] C2.4 Observation week result checked in the admin UI: target 100 % shown, 95 % within 60 s
+- [ ] C2.5 Problems filed as issues
 
 ---
 
@@ -283,35 +641,44 @@ Open issues from C1 take priority over new packages.
 
 Issues from C2 take priority.
 
-| ID | Work package | Automated acceptance criterion |
-|---|---|---|
-| 4.1 | Fake Google Calendar with fixtures (recurring, all-day, changed, deleted events, `410 Gone`) | fake runs in `make dev` |
-| 4.2 | `CalendarSource` + `google_api` (incremental, rebuild; window applied server-side because `syncToken` excludes `timeMin`/`timeMax`), fetch job, `calendar_sources`, `calendar_events`, rev sync (device window −1 to +3 months) | tests against the fake |
-| 4.3 | Wizard/admin: enter OAuth client, Google login, choose calendars, color, "notify: user A/B", test fetch, warning on expired token | E2E against the fake (OAuth flow mocked) |
-| 4.4 | App: agenda, week and month views, toggle sources | emulator E2E |
-| 4.5 | Engine: calendar notifications (evening before, morning, start, all-day, quiet-hours rule), events in summaries; watchdog for calendar keys | planner vectors; backend watchdog test |
-| 4.6 | Add appointment → todo in "calendar" category, action "Open in calendar app" | emulator: intent is fired |
-| 4.7 | Web: `repo.web.ts`, REST endpoints, hide native areas, offline banner + edit lock when the server is unreachable, build into the backend image | Playwright E2E against dev backend, incl. backend stopped → banner, editing blocked |
-| 4.8 | Web login: password → approval in the app (code + yes/no) → session, recovery codes, admin reset, CSRF, 30 days, session list | E2E: browser (Playwright) + emulator approves |
-| 4.9 | Admin UI complete (activity page reads `activity_events`; current mode per user): statistics (incl. "Nerv-Level": notifications per user/day by class, snooze/postpone/claim counts, muted-channel warning from `device_status`), activity, conflicts, logs, settings, tools; admin login with TOTP | page tests |
-| 4.10 | One-page quick guide for Martin's wife (German), checklist `docs/checkpoint-c3.md` | files exist |
+- [ ] **Run 4 done:** all packages ticked, CI green.
+- [ ] Agent asked Martin to move `release` to `main` and stopped for C3.
 
-**Run done when:** all packages checked off, CI green. The agent asks Martin to move `release` to `main` and stops for C3.
+- [ ] **4.0** Break 4.1–4.10 into sub-tasks in this file (same format as Runs 1 and 2)
+- [ ] **4.1** Fake Google Calendar with fixtures (recurring, all-day, changed, deleted events, `410 Gone`) · PR:
+  *Acceptance:* fake runs in `make dev`
+- [ ] **4.2** `CalendarSource` + `google_api` (incremental, rebuild; window applied server-side because `syncToken` excludes `timeMin`/`timeMax`), fetch job, `calendar_sources`, `calendar_events`, rev sync (device window −1 to +3 months) · PR:
+  *Acceptance:* tests against the fake
+- [ ] **4.3** Wizard/admin: enter OAuth client, Google login, choose calendars, color, "notify: user A/B", test fetch, warning on expired token · PR:
+  *Acceptance:* E2E against the fake (OAuth flow mocked)
+- [ ] **4.4** App: agenda, week and month views, toggle sources · PR:
+  *Acceptance:* emulator E2E
+- [ ] **4.5** Engine: calendar notifications (evening before, morning, start, all-day, quiet-hours rule), events in summaries; watchdog for calendar keys · PR:
+  *Acceptance:* planner vectors; backend watchdog test
+- [ ] **4.6** Add appointment → todo in "calendar" category, action "Open in calendar app" · PR:
+  *Acceptance:* emulator: intent is fired
+- [ ] **4.7** Web: `repo.web.ts`, REST endpoints, hide native areas, offline banner + edit lock when the server is unreachable, build into the backend image · PR:
+  *Acceptance:* Playwright E2E against dev backend, incl. backend stopped → banner, editing blocked
+- [ ] **4.8** Web login: password → approval in the app (code + yes/no) → session, recovery codes, admin reset, CSRF, 30 days, session list · PR:
+  *Acceptance:* E2E: browser (Playwright) + emulator approves
+- [ ] **4.9** Admin UI complete (activity page reads `activity_events`; current mode per user): statistics (incl. "Nerv-Level": notifications per user/day by class, snooze/postpone/claim counts, muted-channel warning from `device_status`), activity, conflicts, logs, settings, tools; admin login with TOTP · PR:
+  *Acceptance:* page tests
+- [ ] **4.10** One-page quick guide for Martin's wife (German), checklist `docs/checkpoint-c3.md` · PR:
+  *Acceptance:* files exist
 
 ---
 
 ### 👤 C3: Wrap-up (about 2–3 h)
 
-1. Install the app update on both phones.
-2. **Google integration in the admin UI:** enter OAuth client ID/secret, sign in with Martin's Google account, select and assign the three calendars (Martin's → Martin, his wife's → his wife, shared → both), test fetch.
-3. Check events on both phones; change an event in Google → arrives within 5 min.
-4. Set up and test **web login** for both (approval on the phone); store recovery codes safely.
-5. Full pass through the hardware test matrix (list in the checkpoint document).
-6. **Switch on Coolify DB backups.**
-7. Go through the quick guide with his wife; switch off the observation job.
-8. **Make the GitHub repo private again** (Settings → General → Danger Zone). Then check Actions usage and the minute-saving rules in A6.
-
-**MVP done when:** two weeks of daily use without a lost notification.
+- [ ] C3.1 App update installed on both phones
+- [ ] C3.2 **Google integration in the admin UI:** OAuth client ID/secret entered, signed in with Martin's Google account, the three calendars selected and assigned (Martin's → Martin, his wife's → his wife, shared → both), test fetch done
+- [ ] C3.3 Events checked on both phones; an event changed in Google arrives within 5 min
+- [ ] C3.4 **Web login** set up and tested for both (approval on the phone); recovery codes stored safely
+- [ ] C3.5 Full pass through the hardware test matrix (list in the checkpoint document)
+- [ ] C3.6 **Coolify DB backups switched on**
+- [ ] C3.7 Quick guide gone through with his wife; observation job switched off
+- [ ] C3.8 **GitHub repo made private again** (Settings → General → Danger Zone); Actions usage and the minute-saving rules in A6 checked
+- [ ] **MVP done:** two weeks of daily use without a lost notification
 
 ---
 
@@ -319,12 +686,12 @@ Issues from C2 take priority.
 
 - Martin files bugs or wishes as GitHub issues (template: what happened, what was expected, which device, approximate time). An agent works through issues one by one under the same rules (Part A).
 - Martin moves `release` when he wants an update.
-- More features, each as its own run with a short checkpoint:
-  1. Backups: retention, external copy, **restore test** (Martin, because it involves production data)
-  2. Shopping list
-  3. Notebook
-  4. Finances / household budget
-  5. CalDAV instead of Google, incl. writing
+- More features, each as its own run with a short checkpoint, tracked here with checkboxes and sub-tasks like Runs 1 and 2:
+  - [ ] Backups: retention, external copy, **restore test** (Martin, because it involves production data)
+  - [ ] Shopping list
+  - [ ] Notebook
+  - [ ] Finances / household budget
+  - [ ] CalDAV instead of Google, incl. writing
 
 ---
 
@@ -346,7 +713,8 @@ Issues from C2 take priority.
 
 | Section | Martin's time | Agents |
 |---|---|---|
-| C0 preparation | 3–4 h | – |
+| C0 preparation | 30 min | – |
+| M-tasks (in parallel with Runs 1–4) | about 3 h | – |
 | Run 1 + 2 | – | biggest block (backend core, engine) |
 | C1 | 2–3 h + observation week in the background | – |
 | Run 3 | – | large block (todos, engine II, series) |
@@ -355,7 +723,7 @@ Issues from C2 take priority.
 | C3 | 2–3 h | – |
 | **Total for Martin** | **about 10–14 h** plus daily-use tests | |
 
-How long the runs take depends on how long an agent can work in one go. Work packages are sized so each fits in one session, and the next agent continues seamlessly from `docs/progress.md`.
+How long the runs take depends on how long an agent can work in one go. Work packages are sized so each fits in one session, sub-tasks so each fits in a fraction of one, and the next agent continues seamlessly from the first unticked sub-task (handover in `docs/last-session.md`).
 
 ---
 
@@ -369,7 +737,7 @@ How long the runs take depends on how long an agent can work in one go. Work pac
 | Agent code drifts from the architecture | `AGENTS.md`, specs before code, CI with architecture checks (e.g. no DB access from JS) |
 | Logic diverges across three languages | shared test vectors |
 | A broken state reaches production | deploy only from `release`, which Martin moves at checkpoints |
-| Signing key lost | back it up twice at C0 (e.g. password manager + offline copy) |
+| Signing key lost | back it up twice when creating it (M3, e.g. password manager + offline copy) |
 | Expo/React Native updates break the module | update the SDK deliberately only, as its own issue |
 | Google token expires | warning in the admin UI + notification to Martin, re-login via the admin UI |
 | CI minutes run out | home-server packages first, batch Android work; public repo or self-hosted runner as fallback |

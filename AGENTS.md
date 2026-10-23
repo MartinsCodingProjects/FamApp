@@ -8,8 +8,8 @@ Language: code, identifiers, comments, docs, specs, commit messages, PRs and iss
 
 ## 1. Read first, in this order
 
-1. `docs/progress.md` – where the project stands, which work package is next
-2. `BUILDPLAN.md` – Part A (rules, work locations A6, database A7) and your current run in Part B
+1. `docs/last-session.md` – where the previous session left off: what was finished, what is half done, next sub-task, open blockers, what needs Martin. (`docs/session-history.md` is the archive; you do not need to read it.)
+2. `BUILDPLAN.md` – Part A (rules, work locations A6, database A7) and your current run in Part B. **The checkboxes in Part B are the project status** (legend and rules: Part B, "How progress is tracked")
 3. `README.md` – architecture, behavior, data model
 4. `docs/decisions.md` – what was decided and why (✅ = binding, 🟡 = proposal, valid until someone objects)
 5. `docs/assumptions.md` – assumptions made by earlier agents
@@ -21,16 +21,46 @@ On contradictions: `docs/decisions.md` (✅) > `README.md` > `BUILDPLAN.md` > `d
 
 ## 2. How to work
 
-1. Take the next open package from `docs/progress.md`. **Open GitHub issues labeled `bug` take priority.**
+1. Take the **Next** item from `docs/last-session.md` (or the first unticked sub-task in BUILDPLAN Part B, if it disagrees with the checkboxes) and mark it 🚧 with your branch. **Open GitHub issues labeled `bug` take priority.**
 2. Larger package without a spec? Write the spec first under `docs/` (short, concrete, including edge cases). No approval needed.
 3. Branch `pkg/<id>-<short-name>`, e.g. `pkg/1.7-migrations`.
 4. The package's acceptance criterion becomes an **automated test**. Test first, then implementation, where it makes sense.
 5. Check locally: `make lint && make test`.
 6. For Android parts: push, trigger CI, read the result with `gh run watch` / `gh run view --log-failed`.
 7. Open a PR (template below), enable auto-merge. Merging into `main` happens when the required check `ci-gate` is green.
-8. Update `docs/progress.md` (in the same PR). Then go straight to the next package.
+8. In the same PR: tick the finished sub-tasks in BUILDPLAN Part B, tick the package line with the PR number once all its sub-tasks are done, Then go straight to the next sub-task.
 
-At the end of a run: write the checkpoint file `docs/checkpoint-cN.md`, ask Martin to move `release` (issue + note in `docs/progress.md`) and stop (see BUILDPLAN Part B). Never move `release` yourself.
+At the end of a run: write the checkpoint file `docs/checkpoint-cN.md`, ask Martin to move `release` (issue + note under **Needs Martin** in `docs/last-session.md`) and stop (see BUILDPLAN Part B). Never move `release` yourself.
+
+### Ending a session
+
+Whenever you stop and wait for a new prompt (run done, blocked, context running out, task finished):
+
+1. Overwrite `docs/last-session.md` with the fields below. Refer to sub-task IDs; do not repeat the checkbox status in prose.
+2. Run `tools/session-end.sh`. It copies the file to the top of `docs/session-history.md` and skips it if it is already there.
+3. Commit both files in the session's last PR. If there is none (e.g. you stopped blocked), open a docs-only PR `session/<date>` with auto-merge.
+
+```
+## Session <YYYY-MM-DD HH:MM> – <short title>        ← unique; the script keys on this line
+
+**Run / section:** <e.g. Run 1>
+**Finished:** <sub-task / package IDs, with PR numbers>
+**In progress:** <IDs marked 🚧 and how far they got, or "–">
+**Stopped because:** <run done / blocked / context limit / waiting for Martin>
+**Next:** <the next sub-task ID for the next agent; next step for Martin if any>
+
+### Summary
+<3–6 bullets: what was done, notable choices (link assumptions.md entries)>
+
+### Needs Martin (review / decision)
+<optional: what to review, which decision, issue links; "none">
+
+### Went wrong / watch out
+<optional: failures, flaky tests, workarounds, things the next agent must know; "none">
+
+### Open blockers
+<table: Since | Item | Blocked by | Issue — carry over every unresolved row from the previous file>
+```
 
 ### PR template
 
@@ -55,7 +85,7 @@ At the end of a run: write the checkpoint file `docs/checkpoint-cN.md`, ask Mart
 
 ## 3. When to stop and ask
 
-**Only** in these cases (open an issue labeled `question`, note it in progress, continue with independent packages if possible):
+**Only** in these cases (open an issue labeled `question`, mark the sub-task ⏸ in BUILDPLAN, add it under **Open blockers** in `docs/last-session.md`, continue with independent sub-tasks if possible):
 
 1. Access, an account or a secret is missing that only Martin can create.
 2. User-visible behavior is not covered by the README or decisions.

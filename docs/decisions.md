@@ -375,7 +375,7 @@ Gaps found before development started, decided by Martin. Decisions that change 
   - the server knows the latest app version (from the `release` build) and the app shows "Update verfügbar" (also visible in the admin UI per device).
 - ✅ **Room schema on the phone:** mirror tables may be dropped and fully re-synced on a schema change. Outbox, auth and sync-state tables only get real migrations and are never dropped. Tested in CI.
 - ✅ **No development builds on the phones.** The phones only run signed release APKs. Live reload only in the emulator (notebook) or Expo web. No separate `.dev` app ID.
-- ✅ **Only Martin moves `release`.** At the end of a run the agent writes the checkpoint file and asks Martin (issue + note in `docs/progress.md`) to move `release`.
+- ✅ **Only Martin moves `release`.** At the end of a run the agent writes the checkpoint file and asks Martin (issue + note in `docs/last-session.md`) to move `release`.
 
 ### CI and GitHub
 
