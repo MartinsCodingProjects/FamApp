@@ -43,7 +43,7 @@ Rationale for every decision: `docs/decisions.md`. Build order and development e
  │   │  calendar fetch, heartbeat, FCM sending               │      public)      │
  │   └───────────────────────────────────────────────────────┘                   │
  └───────────────────────────────────────────────────────────────────────────────┘
-                      │ FCM: data message "sync", high priority
+                      │ FCM: data message "sync" (high or normal priority, 3.3)
                       ▼
  ┌──────────────────────── Android app ─────────────────────────┐
  │  UI (Expo, TypeScript) ──► data/repo.ts ──► Kotlin engine    │
@@ -67,7 +67,7 @@ Rationale for every decision: `docs/decisions.md`. Build order and development e
 | Class | Source | Android channel | Behavior |
 |---|---|---|---|
 | **Summary** | Device, at configured times; content built at display time from local data | `summary`, high | Only place where `due_soon` todos appear. The day's first summary also carries the quiet-hours catch-up. Server watchdog expects an ack, otherwise wake-up after 15 min |
-| **Urgent (explicit)** | Server, sent by a person | `urgent`, high; a second urgent channel bypasses Do Not Disturb (used when the user enabled bypass) | Repeats every 15 min inside the nag window until done; hourly after "Mach ich"; counts as overdue after the recipient's next quiet-hours start. Actions: Done, Mach ich, Snooze |
+| **Urgent (explicit)** | Server, sent by a person | `urgent`, high; a second urgent channel bypasses Do Not Disturb (used when the user enabled bypass) | Repeats every 15 min inside the nag window until done; hourly after "Mach ich"; counts as overdue from `urgent_downgrade_at` (4.1). Actions: Done, Mach ich, Snooze |
 | **Scheduled reminder** | Device, at `due_at` (optional lead time: 15 min / 1 h / 1 day) | `due`, high | Once; if still open afterwards, the todo is overdue and joins the overdue nag |
 | **Overdue (combined)** | Device, while any todo of the user is overdue (horizon, scheduled, or explicit urgent after the end-of-day downgrade) | `due`, high | **One combined notification per user**, at the **overdue slots** (default 4 per day, 3.3). Actions: Snooze 2 Std. / Bis morgen; tapping opens the list |
 | **Normal** | Server, when the other person creates a todo for me/both, completes/dismisses one for me/both or created by me, or says "Mach ich" to my urgent todo | `activity`, normal | Batched; collected during quiet hours and until the first summary |
@@ -95,7 +95,7 @@ Configurable per weekday. They apply in the modes `remind` and `essentials`; in 
 - Explicitly urgent: every 15 min (configurable) from the time it was sent, one notification per todo.
   - **"Mach ich"** (claim): nagging for the claimer slows to hourly; sent to "both", nagging stops for the other user; the sender gets an activity notification.
   - The sender sees per recipient "Zugestellt {time}" / "Mach ich {time}". Sent during the recipient's quiet hours, the sender sees "Ruhezeit bis {time}, danach Erinnerungen alle {n} Min."; the server computes the recipient's next nag window start and syncs it to the sender.
-  - Once the recipient's next quiet hours have started, it counts as `overdue` (computed) and moves into the combined overdue notification.
+  - Once the recipient's next quiet hours have started, it counts as `overdue` and moves into the combined overdue notification. The server computes that moment as `urgent_downgrade_at` (sent to "both": the later of the two recipients' quiet-hours starts) and syncs it read-only, because quiet hours are private to each user; all devices compute the level from it.
 - Overdue (horizon, scheduled, downgraded explicit urgent): **one combined notification per user** ("3 überfällige Todos: …", up to 3 titles, oldest first) at the **overdue slots** (default 4 per day, per user 1–6). Slots are computed from the nag window: cut it at each summary time, split the largest gap until there are as many gaps as slots, slot = midpoint of each gap (rounded half up to 5 min, gaps < 60 min get none; details `docs/decisions.md` section 11). Example: quiet hours 22–06, summaries 07:00 / 12:30 / 19:00 → 09:45, 14:10, 17:25, 20:30. A todo that becomes overdue between slots waits for the next one.
 - Does **not** stop when tapped, only when the todo is done, dismissed or postponed (or snoozed).
 - Sent to "both": if one person completes it, it stops for both.
@@ -140,7 +140,7 @@ Every display has a fixed key from which the Android notification ID and the del
 
 Keys for the remaining displays (batched activity, quiet-hours catch-up on a day without summary, `dnd` catch-up) are defined in `docs/spec-todos.md` (BUILDPLAN 3.1) and added here.
 
-Keys are deterministic, so the server knows which acks to expect without the device announcing them. The Android notification ID is derived from the key; delivery records add the planned minute for repeating displays (`nag:<todo-id>@2026-11-02T14:15Z`), so every repetition is tracked.
+Keys are deterministic, so the server knows which acks to expect without the device announcing them. The Android notification ID is derived from the key. **Shown state and delivery records of every device-planned display use key + planned minute** (`nag:<todo-id>@2026-11-02T14:15Z`, `due:<todo-id>:at@2026-11-05T09:00Z`), so every repetition is tracked and a postponed reminder or a moved calendar event is shown again at its new time.
 
 ### 3.6 Sync triggers
 
@@ -188,7 +188,7 @@ Green/red status with a button that opens the matching system setting:
 | Mode | Label | What notifies |
 |---|---|---|
 | `remind` (default) | Erinnern | everything in 3.1–3.3, full nagging |
-| `essentials` | Nur Wichtiges | summaries; activity (new todo for me/both, completed/dismissed, "Mach ich"); explicit urgent **once**; scheduled reminder and lead time **once**; calendar; "Server nicht erreichbar"; login approvals. **No nagging**; overdue only in summaries |
+| `essentials` | Nur Wichtiges | summaries; activity (new todo for me/both, completed/dismissed, "Mach ich"); explicit urgent **once**; scheduled reminder and lead time **once**; calendar; "Server nicht erreichbar" and "worker down" (3.7); login approvals. **No nagging**; overdue only in summaries |
 | `dnd` | Nicht stören | nothing except web login approvals |
 
 - **Per user, synced.** Quiet hours still apply on top in `remind` and `essentials`.
@@ -215,7 +215,7 @@ Green/red status with a button that opens the matching system setting:
 | Activity | batching window (2 min, 0–10) |
 | Theme | System / Light / Dark |
 
-Not per user: level thresholds (both users must see the same levels), system timings (watchdog, periodic sync, "server unreachable", heartbeat; admin UI), the 30 s undo.
+Not per user: level thresholds (both users must see the same levels), system timings (watchdog, periodic sync, "server unreachable", device without sync 6 h, worker heartbeat 15 min; admin UI), the 30 s undo.
 
 ---
 
@@ -227,7 +227,7 @@ Not per user: level thresholds (both users must see the same levels), system tim
 |---|---|---|
 | `scheduled` | exact time (`due_at`), optional lead time | scheduled; "today" on the day itself; `overdue` after `due_at` |
 | `horizon` | target date, chosen as 1–4 weeks or 1–3 months | computed, see below |
-| `immediate` | explicitly urgent, right now | urgent (nag every 15 min); `overdue` after the recipient's next quiet-hours start |
+| `immediate` | explicitly urgent, right now | urgent (nag every 15 min); `overdue` from `urgent_downgrade_at` (the recipient's next quiet-hours start, server-computed, 3.3) |
 | `someday` | none | someday |
 
 **The level is never stored; it is computed from `target_date`:**
@@ -284,7 +284,7 @@ Level computation exists three times (Python on the server, Kotlin in `engine-co
 - **Google Calendar API, read-only** (`calendar.readonly`). One OAuth login in the admin UI (Settings, at C3; see 10). OAuth app set to "In production" without verification so refresh tokens do not expire after 7 days.
 - The worker fetches incrementally every 5 min (`syncToken`), writes `calendar_events` (expanded recurrences, −1 to +12 months) and distributes them through the normal sync. Google does not allow `timeMin`/`timeMax` with `syncToken`, so the server applies the window itself. The device keeps **−1 to +3 months** locally, so all calendar views work offline; views stop at that window.
 - **Who gets notified, per source:** Martin's calendar → Martin, his wife's → his wife, shared → both (configurable in the admin UI).
-- Calendar notifications: evening before (19:00), morning of (07:00), start time. All-day events have no start-time notification. Anything falling into quiet hours is dropped.
+- Calendar notifications: evening before (19:00), morning of (07:00), start time. All-day events have no start-time notification. Morning and start-time notifications that fall into quiet hours are dropped (3.2).
 - Backend interface `CalendarSource` with implementation `google_api`. Later `caldav` (e.g. Radicale on the VPS) without changes to the app or data model.
 
 ---
@@ -305,7 +305,7 @@ All synced tables have `id` (UUID), `rev` (sequential number from `next_rev()`, 
 | `web_sessions`, `login_approvals` | web sessions, pending login approvals | approvals yes |
 | `people` | Martin, his wife, child, household | yes |
 | `categories` | name, color, icon, sort order | yes |
-| `todos` | see section 4, incl. field-group timestamps | yes |
+| `todos` | see section 4, incl. field-group timestamps; server-derived read-only fields: `urgent_downgrade_at`, delivery status per recipient ("Zugestellt" / "Mach ich") | yes |
 | `todo_series` | rule, template, assignee mode, `replace_open` | yes (read-only) |
 | `todo_snoozes` | "Snooze" per todo and user; `todo_id` NULL = combined overdue notification | yes |
 | `todo_claims` | "Mach ich" per explicit urgent todo and user | yes |
@@ -316,6 +316,10 @@ All synced tables have `id` (UUID), `rev` (sequential number from `next_rev()`, 
 | `calendar_events` | cached events | yes (time window) |
 | `secrets` | encrypted configuration | no |
 | `rev_counter` | counter for `rev` | no |
+| `pairing_codes`, `recovery_codes` | hashed one-time codes | no |
+| `processed_ops` | op UUIDs already applied (push idempotency) | no |
+| `mode_changes` | timestamped mode changes per user, for the mode-aware watchdog | no |
+| `worker_heartbeat` | last worker heartbeat (one row) | no (its age goes into every sync response) |
 | `audit_log`, `conflict_log`, `job_log` | traceability for the admin UI | no |
 
 ---
@@ -359,7 +363,7 @@ app/                      Expo app (TypeScript)
       ├─ db/              Room: mirror tables, outbox, sync state
       ├─ fcm/             FirebaseMessagingService → sync, onNewToken
       ├─ alarm/           set the one alarm (AlarmManager), WorkManager jobs
-      ├─ display/         channels, content, batching, actions (Done/Snooze/Postpone/Login)
+      ├─ display/         channels, content, batching, actions (Done/Mach ich/Snooze, undo, login Yes/No)
       ├─ receivers/       alarm, boot, time change, package update, notification actions
       └─ bridge/          functions and events for JavaScript
 ```
@@ -461,14 +465,14 @@ Delivery (per display and device; alarm firings with pre-display sync success pe
 
 ### Deployment and migrations
 - Coolify deploys only the `release` branch; only Martin moves it.
-- On start the worker runs `alembic upgrade head` under a DB lock, then starts the scheduler. `api` answers `/api/health` with 503 until the schema is at its code's head revision or a later one.
+- On start the worker runs `alembic upgrade head` under a DB lock, then starts the scheduler. `api` answers `/api/health` with 503 until the schema is at its code's head revision or at a revision the code does not know (only possible if newer, because migrations only go forward). A worker that finds such an unknown revision skips the upgrade, logs a warning and starts.
 - Migrations are additive (expand/contract), so a bad release can be rolled back by redeploying the previous image (it accepts the newer schema). Down migrations are tested in CI but never run in production.
 
 ### Backups
 After the MVP: scheduled Coolify DB backup to external storage plus a restore test. Automatic backups are switched on at checkpoint C3.
 
 ### App distribution
-Signed APK from CI (signing only in the protected GitHub Environment `release`, attached to a GitHub Release), installed directly or via Firebase App Distribution; no Play Store. No development builds on the phones. The app shows "Update verfügbar" when the server reports a newer version.
+Signed APK from CI (signing only in the release workflow on the `release` branch, attached to a GitHub Release; key in the GitHub Environment `release` while the repo is public, a repo secret after C3, `docs/release-signing.md`), installed directly or via Firebase App Distribution; no Play Store. No development builds on the phones. The app shows "Update verfügbar" when the server reports a newer version. The version (name + `versionCode`) lives once in `app/version.json`, read by the APK build and the backend; the agent bumps it in the PR that asks Martin to move `release`.
 
 ---
 
@@ -504,6 +508,7 @@ famapp/
 │  ├─ last-session.md       handover from the previous session (status: BUILDPLAN Part B)
 │  ├─ session-history.md    archive of all handovers, newest first
 │  ├─ spec-*.md             specifications
+│  ├─ release-signing.md    signing key and secrets (input for M3)
 │  └─ checkpoint-c*.md      checkpoint checklists for Martin
 ├─ shared/
 │  ├─ strings/de.json       all user-facing text (single source, see 8.4)
@@ -528,21 +533,21 @@ famapp/
 │  ├─ migrations/
 │  ├─ tests/
 │  └─ Dockerfile
-├─ app/                     Expo app incl. modules/famapp-engine (see 8.1)
+├─ app/                     Expo app incl. modules/famapp-engine (see 8.1) and version.json (app version, 10)
 ├─ deploy/
 │  ├─ docker-compose.yml    api + worker (MariaDB as Coolify resource)
 │  └─ cloudflare.md         DNS, WAF and Access settings
 └─ .github/
    ├─ workflows/            CI
-   └─ ISSUE_TEMPLATE/       bug report
+   └─ ISSUE_TEMPLATE/       bug report, question
 ```
 
 ---
 
 ## 13. Known limitations
 
-- **"Force stop"** in the app settings stops alarms and FCM until the app is opened again. No app can work around this. The server heartbeat makes it visible.
-- Samsung may restrict background work despite settings. The reliability check, watchdog and heartbeat make this visible. Plan B: `specialUse` foreground service (see 8.1).
+- **"Force stop"** in the app settings stops alarms and FCM until the app is opened again. No app can work around this. The server's "device without sync for > 6 h" notice makes it visible (3.7).
+- Samsung may restrict background work despite settings. The reliability check, watchdog and the "device without sync" notice make this visible. Plan B: `specialUse` foreground service (see 8.1).
 - `setAlarmClock()` shows an alarm icon and becomes the system's "next alarm" (default decided at C1, see 3.4).
 - Nothing outside the phones watches the server: if the whole server is down, devices notice through failing syncs (system notification after 3 h); if only the worker is down, they notice through its stale heartbeat in sync responses (3.7).
 - Without a network, a todo completed on the other device may keep nagging until the network is back.

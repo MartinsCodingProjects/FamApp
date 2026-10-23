@@ -96,7 +96,7 @@ Legend: ✅ decided by Martin · 🟡 proposal; implemented this way unless some
 - 🟡 Contents:
   - **Delivery:** status per notification and device (planned, shown, acknowledged, not delivered), delay, watchdog retries
   - **Devices:** last sync, app version, FCM token status, generate pairing code, lock device
-  - **Statistics:** delivery rate, delay (median, p95), completed todos per person/category
+  - **Statistics:** delivery rate, delay (median, p95), completed todos per person/category, "Nerv-Level" (section 11)
   - **Activity:** chronological, who created/completed what
   - **Conflicts:** changes overwritten by last-write-wins
   - **Logs:** errors, calendar fetches, FCM responses, audit log
@@ -120,7 +120,7 @@ All times, intervals and switches in this section are **configurable per user in
 - ✅ **During quiet hours: no nagging and no normal notifications.**
 - ✅ Only exception: an explicitly urgent todo that is **newly sent** during quiet hours appears **once**. Then it pauses; ~~nagging starts when active time begins~~ nagging starts with the recipient's nag window (changed 2026-10-23, section 11).
 - 🟡 This one-time night notification uses the high channel but does not bypass Do Not Disturb.
-- 🟡 Anything else that accumulates during quiet hours is delivered at the start of active time (see each class).
+- 🟡 Anything else that accumulates during quiet hours is delivered with the day's first summary, or at the end of quiet hours on a day without one (section 11; see each class).
 - ✅ **The day starts with the first summary** (decided 2026-10-23, section 11): nagging (explicit and overdue) only runs inside the **nag window**, from the day's first summary until quiet hours start. Between the end of quiet hours and the first summary the quiet-hours rules for nagging and activity notifications still apply. Weekends start later automatically because summaries are per weekday.
 
 ### Classes
@@ -210,6 +210,7 @@ todos
   due_at            : for kind=scheduled
   lead_time         : for kind=scheduled, optional (none / 15 min / 1 h / 1 day)
   urgent_sent_at    : for kind=immediate, when it was sent (15-min rhythm and end-of-day downgrade count from it)
+  urgent_downgrade_at : for kind=immediate, server-computed, read-only on devices (section 11)
   target_date       : for kind=horizon
   category_id       : optional
   assignee_user_id  : user id or NULL (= both)
@@ -236,14 +237,14 @@ categories   (id, slug, name, color, icon, sort_order, active)
 | > 4 weeks | `long_term` |
 | 1 to 4 weeks | `mid_term` |
 | < 1 week | `due_soon` (renamed from `urgent` 2026-10-23; shown in summaries, **no nagging**) |
-| past | `overdue` (combined notification at the 4 overdue slots) |
-| kind `immediate` | explicit urgent; after the recipient's next quiet-hours start it counts as `overdue` (section 11) |
+| past | `overdue` (combined notification at the overdue slots, default 4) |
+| kind `immediate` | explicit urgent; from `urgent_downgrade_at` (recipient's next quiet-hours start, server-computed) it counts as `overdue` (section 11) |
 | kind `someday` | someday (never changes) |
 | kind `scheduled` | scheduled; "today" on the day itself; `overdue` after `due_at` |
 | series instance | relative thresholds, see "Recurring todos" |
 
 - 🟡 Thresholds configurable centrally (admin UI).
-- 🟡 "Postpone" action: sets a new target date (1–4 weeks / 1–3 months from today), which also ends nagging. For scheduled todos see section 11.
+- 🟡 "Postpone" action: sets a new target date ("Morgen", "+3 Tage", 1–4 weeks / 1–3 months from today), which also ends nagging. For scheduled todos and explicit urgent todos see section 11.
 - 🟡 Sort order: explicit urgent → overdue → due soon → scheduled today → mid term → long term → someday.
 
 ### Recurring todos
@@ -339,7 +340,7 @@ Kotlin engine "famapp-engine"
        │           notifications, deliveries, settings, todo_snoozes, todo_claims,
        │           activity_events (90 days), outbox, sync_state
        ├─ alarm: the one exact alarm, WorkManager jobs
-       ├─ display: channels, batching, actions "Done"/"Snooze"/"Postpone"
+       ├─ display: channels, batching, actions "Done"/"Mach ich"/"Snooze", undo, login Yes/No
        └─ events to the UI: "data changed" → UI reloads
 ```
 
@@ -355,7 +356,7 @@ Gaps found before development started, decided by Martin. Decisions that change 
 ### Delivery and reliability
 
 - ✅ **Watchdog covers all classes.** The server computes the expected display keys not only for summaries but also for nags (explicit and combined time-based), scheduled reminders and calendar notifications, with the same rules as the engine (shared test vectors). Missing ack → wake-up, then "late/missing". An explicit urgent todo is displayed under `nag:<todo-id>`; its first display gets the 2/10/60 min retry schedule. This makes "no lost notification" measurable.
-  - 🟡 Delivery records are kept per repetition: the Android notification ID comes from the base key (`nag:<todo-id>`), the delivery key adds the planned minute (`nag:<todo-id>@2026-11-02T14:15Z`).
+  - ✅ (decided 2026-10-23) Shown state and delivery records of **every** device-planned display are kept per key + planned minute: the Android notification ID comes from the base key (`nag:<todo-id>`), the record key adds the planned minute (`nag:<todo-id>@2026-11-02T14:15Z`). So a postponed scheduled reminder or a moved calendar event (same base key, new time) is shown again instead of being skipped as "already shown".
 - ✅ **Server monitoring: device-side only.** No external monitoring service. If the device **has network but sync fails** for 3 h outside quiet hours, the engine shows a local notification "Server nicht erreichbar" (once, then again after 24 h). Flight mode or dead zones (no network) never trigger it.
 - ✅ **Worker heartbeat** (decided 2026-10-23): if only the worker dies, the API keeps answering, so failing syncs would never show it. The worker writes a heartbeat every minute; every sync response carries its age; if it is older than 15 min outside quiet hours, the engine shows a local system notification (once, then again after 24 h).
 - ✅ **Offline banner in the app** (decided 2026-10-23): whenever the app cannot reach the server, a small banner is visible on every screen, including while creating or editing todos, so it is clear that changes are only stored on the phone for now.
@@ -374,12 +375,13 @@ Gaps found before development started, decided by Martin. Decisions that change 
 
 ### Deployment and versions
 
-- ✅ **Migrations: the worker migrates, forward-only.** On start the worker runs `alembic upgrade head` under a DB lock before starting the scheduler. `api` reports `/api/health` as "not ready" (503) until the schema is at its code's head revision **or a later one** (a descendant of it). Migrations are **additive** (expand/contract: add first, remove in a later release), so a bad release can be rolled back by redeploying the previous image, which then accepts the newer schema. Down migrations exist and are tested in CI but are never run in production. Destructive steps still need Martin's approval.
+- ✅ **Migrations: the worker migrates, forward-only.** On start the worker runs `alembic upgrade head` under a DB lock before starting the scheduler. `api` reports `/api/health` as "not ready" (503) until the schema is at its code's head revision **or a later one**. ✅ (decided 2026-10-23) "Later" = a revision the code does not know: the previous image cannot see the newer migration script, and an unknown revision can only be newer because migrations only go forward. A worker that finds an unknown revision skips `alembic upgrade`, logs a warning and starts. Migrations are **additive** (expand/contract: add first, remove in a later release), so a bad release can be rolled back by redeploying the previous image, which then accepts the newer schema. Down migrations exist and are tested in CI but are never run in production. Destructive steps still need Martin's approval.
 - ✅ **App/server version compatibility:**
   - every app request carries a protocol version header; the server supports the current and the previous protocol version,
   - the client ignores unknown fields and tables,
   - the server knows a minimum supported app version and refuses older ones with a clear error shown in the app,
   - the server knows the latest app version (from the `release` build) and the app shows "Update verfügbar" (also visible in the admin UI per device).
+  - ✅ (decided 2026-10-23) **App version source:** `app/version.json` (version name + `versionCode`), read by the APK build and the backend. The agent bumps it in the PR that asks Martin to move `release` (end of a run, or a bug-fix release). The release workflow fails if `versionCode` is not higher than the last GitHub Release's.
 - ✅ **Room schema on the phone:** mirror tables may be dropped and fully re-synced on a schema change. Outbox, auth and sync-state tables only get real migrations and are never dropped. Tested in CI.
 - ✅ **No development builds on the phones.** The phones only run signed release APKs. Live reload only in the emulator (notebook) or Expo web. No separate `.dev` app ID.
 - ✅ **Only Martin moves `release`.** At the end of a run the agent writes the checkpoint file and asks Martin (issue + note in `docs/last-session.md`) to move `release`.
@@ -389,6 +391,7 @@ Gaps found before development started, decided by Martin. Decisions that change 
 - ✅ **The repository is public during development** so GitHub Actions minutes are free and the emulator suite can run on every PR that touches `app/`. **Reminder: make it private again at C3** (item in the C3 checklist). Consequences: no secrets, personal data or todo contents in the repo, issues or logs; `google-services.json` is public (acceptable, the key is restricted to the package).
 - ✅ **One required check:** an always-running job `ci-gate` that depends on all other jobs and treats skipped jobs as OK. Branch protection requires only `ci-gate`, so path filters never block a merge.
 - ✅ **Signing key only in a GitHub Environment `release`**, restricted to the `release` branch, with Martin as required reviewer. PR and `main` builds are debug-signed and only exist as CI artifacts. Workflows from forks never get secrets.
+- ✅ **After C3: private repo on GitHub Free** (decided 2026-10-23). Free private repos have no rulesets/branch protection, no Environment secrets and no required reviewers. Therefore at C3: the signing key moves to a **repo secret** that only the release workflow (trigger: push to `release`) reads; the `main` ruleset and auto-merge are gone, so agents wait for `ci-gate` themselves (`gh pr checks --watch`) and merge only when it is green. From then on these rules are enforced by `AGENTS.md`, not by GitHub; accepted, since agents already act with Martin's rights.
 - ✅ Agents use **Martin's `gh` login** in code-server (a token of Martin's own account, permissions per BUILDPLAN C0.2; no separate bot account). Accepted risk: agents technically have Martin's GitHub rights; the rules in `AGENTS.md` (never touch `release`, branch protection or other repos) apply.
 
 ---
@@ -429,7 +432,7 @@ Review of the priority system against notification volume. Finding: the bigger r
   - The sender gets an activity notification ("{name}: Mach ich").
   - Stored in `todo_claims`, synced; a later "Done" or "Dismiss" ends it as usual.
 - ✅ **Delivery status visible to the sender:** the todo shows per recipient "Zugestellt {time}" (shown on at least one device, from `deliveries`) and "Mach ich {time}". The server derives this and syncs it with the todo to the sender (read-only fields, no extra table on the device).
-- ✅ **End-of-day downgrade:** an open explicit urgent todo that has gone through the start of the recipient's quiet hours since it was sent counts as `overdue` from then on: it leaves the 15-min nag and joins the combined overdue notification. **Computed, not stored** (no write, no conflict); covered by the level vectors. A todo sent during quiet hours is only downgraded at the *next* quiet-hours start.
+- ✅ **End-of-day downgrade:** an open explicit urgent todo that has gone through the start of the recipient's quiet hours since it was sent counts as `overdue` from then on: it leaves the 15-min nag and joins the combined overdue notification. The level stays computed, not stored. ✅ (decided 2026-10-23) Because quiet hours are private to each user, the other user's device cannot compute this moment itself: the **server computes `urgent_downgrade_at`** from `urgent_sent_at` and the recipient's quiet hours (recomputed if they change) and syncs it as a read-only field (no conflict, like the delivery status). Sent to "both": the **later** of the two recipients' quiet-hours starts, so both users see the same level. Covered by the level vectors. A todo sent during quiet hours is only downgraded at the *next* quiet-hours start.
 
 ### Postpone
 
@@ -475,7 +478,7 @@ Decided by Martin. Builds on section 11.
 | Mode | German label | What notifies |
 |---|---|---|
 | `remind` (default) | "Erinnern" | everything as described in sections 5 and 11 (full nagging) |
-| `essentials` | "Nur Wichtiges" | summaries; activity notifications (new todo for me/both, completed/dismissed, "Mach ich"); explicit urgent **once** (no repetition); scheduled reminder and lead time **once**; calendar notifications; "Server nicht erreichbar"; login approvals. **No nagging:** no 15-min repeats, no overdue slots; overdue todos only appear in summaries |
+| `essentials` | "Nur Wichtiges" | summaries; activity notifications (new todo for me/both, completed/dismissed, "Mach ich"); explicit urgent **once** (no repetition); scheduled reminder and lead time **once**; calendar notifications; "Server nicht erreichbar" and "worker down" (✅ added 2026-10-23); login approvals. **No nagging:** no 15-min repeats, no overdue slots; overdue todos only appear in summaries |
 | `dnd` | "Nicht stören" | **nothing**, except web login approvals (only triggered by the user's own action) |
 
 - ✅ Modes are per user, synced, so they apply to all of that user's devices.
@@ -513,7 +516,7 @@ Decided by Martin. Builds on section 11.
 
 - ✅ **Not per user, on purpose:**
   - Level thresholds (`due_soon` < 1 week, series 25 %) stay central in the admin UI: both users see the same list, and a todo must not be "due soon" for one and "mid term" for the other.
-  - System timings (watchdog 2/10/60 min and 15 min, periodic sync 15 min, "server unreachable" 3 h, heartbeat 6 h) are admin settings.
+  - System timings (watchdog 2/10/60 min and 15 min, periodic sync 15 min, "server unreachable" 3 h, device without sync 6 h, worker heartbeat 15 min) are admin settings.
   - The 30 s undo stays fixed.
 - 🟡 Every setting and range is part of the shared test vectors, where it affects planner output (quiet hours per weekday, slot count, intervals).
 

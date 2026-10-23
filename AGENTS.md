@@ -32,10 +32,10 @@ If you notice a contradiction, fix the lower-ranked document in the same PR.
 4. The package's acceptance criterion becomes an **automated test**. Test first, then implementation, where it makes sense.
 5. Check locally: `make lint && make test`.
 6. For Android parts: push, trigger CI, read the result with `gh run watch` / `gh run view --log-failed`.
-7. Mark the PR ready for review (template below), enable auto-merge. Merging into `main` happens when the required check `ci-gate` is green.
+7. Mark the PR ready for review (template below), enable auto-merge. Merging into `main` happens when the required check `ci-gate` is green. **After C3** (private repo on GitHub Free, no rulesets): wait with `gh pr checks --watch` and merge only when `ci-gate` is green.
 8. In the same PR: tick the finished sub-tasks in BUILDPLAN Part B, tick the package line with the PR number once all its sub-tasks are done. Then go straight to the next sub-task.
 
-At the end of a run, follow that run's lines in BUILDPLAN Part B: Run 1 continues directly with Run 2; after Runs 2 and 4 write the checkpoint file `docs/checkpoint-cN.md` (it is the run's last package), ask Martin to move `release` (issue + note under **Needs Martin** in `docs/last-session.md`) and stop; after Run 3 ask the same but continue with Run 4. Never move `release` yourself.
+At the end of a run, follow that run's lines in BUILDPLAN Part B: Run 1 continues directly with Run 2; after Runs 2 and 4 write the checkpoint file `docs/checkpoint-cN.md` (it is the run's last package), bump `app/version.json` (`versionCode` + 1), ask Martin to move `release` (issue + note under **Needs Martin** in `docs/last-session.md`) and stop; after Run 3 ask the same but continue with Run 4. Never move `release` yourself.
 
 ### Ending a session
 
@@ -43,7 +43,7 @@ Whenever you stop and wait for a new prompt (run done, blocked, context running 
 
 1. Overwrite `docs/last-session.md` with the fields below. Refer to sub-task IDs; do not repeat the checkbox status in prose.
 2. Run `tools/session-end.sh`. It copies the file to the top of `docs/session-history.md` and skips it if it is already there.
-3. Commit both files in the session's last PR. If there is none (e.g. you stopped blocked), open a docs-only PR `session/<date>` with auto-merge.
+3. Commit both files in the session's last PR before it merges. If there is none, or it already merged (e.g. you stopped blocked), open a docs-only PR `session/<date>` with auto-merge.
 
 ```
 ## Session <YYYY-MM-DD HH:MM> – <short title>        ← unique; the script keys on this line
@@ -155,7 +155,7 @@ Details: `BUILDPLAN.md` A6 and A7. Summary:
 - `google-services.json` may be committed; service account keys never.
 - No todo content in logs.
 - **The repo is public until C3:** no personal data, todo contents, real names beyond the docs, IPs or tokens in code, fixtures, issues, PRs or CI logs.
-- The APK signing key exists only in the GitHub Environment `release`. Never change which branches or reviewers that environment allows.
+- The APK signing key exists only in the GitHub Environment `release` (after C3: a repo secret read only by the release workflow). Never change which branches or reviewers that environment allows, and never use the signing secrets in any other workflow.
 - Admin host: requests without a valid Cloudflare Access JWT are rejected (only `FAMAPP_DEV=1` disables the check; never set it in deploy files).
 - No public `/docs` or `/openapi.json` endpoints in production.
 

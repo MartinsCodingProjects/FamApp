@@ -25,7 +25,7 @@ The plan is organized for **autonomous work by AI agents**. Martin only steps in
    - **Controllable clock:** backend and engine get the time only through a time provider. Tests can set "now" and fast-forward (required for quiet hours, nag intervals, levels, DST).
 2. **One command per task** (`Makefile`): `make setup`, `make dev`, `make test`, `make lint`, `make tokens`, `make e2e`, `make apk`. Agents and CI use the same commands.
 3. **Android tested automatically in an emulator.** CI starts an emulator and checks, among other things, Doze (`adb shell dumpsys deviceidle force-idle`), reboot, time and time zone changes, network off, app process killed, notification actions. CI covers most of the test matrix this way. Only what needs real hardware is left for Martin.
-4. **Shared test vectors** in `shared/test-vectors/` (levels, quiet hours, modes, nag times, rotation, RRULE, conflicts). Python, Kotlin and TypeScript test against the same files.
+4. **Shared test vectors** in `shared/test-vectors/` (levels, quiet hours, modes, nag times, planner, rotation, RRULE, conflicts, strings). Python, Kotlin and TypeScript test against the same files.
 5. **Spec before code.** Every larger package starts with a short spec under `docs/`. Agents write it themselves based on the README and `docs/decisions.md`. No approval needed.
 6. **`AGENTS.md` in the repo root** (`CLAUDE.md` points to it): project goal, commands, conventions, definition of done, stop rules, where things live. Every agent reads it first.
 
@@ -52,9 +52,9 @@ Everything else the agent decides itself and records in `docs/assumptions.md`. M
 
 ### A4. Branches, deployment, secrets
 
-- Agents work on feature branches, one PR per work package. **Auto-merge into `main` when CI is green.** (Martin can merge every PR himself instead, at the cost of autonomy.)
+- Agents work on feature branches, one PR per work package. **Auto-merge into `main` when CI is green.** (Martin can merge every PR himself instead, at the cost of autonomy.) After C3 the repo is private on GitHub Free, which has no rulesets: agents then wait for `ci-gate` (`gh pr checks --watch`) and merge only when it is green (`docs/decisions.md` section 10).
 - **Coolify deploys only the `release` branch.** **Only Martin moves it** to the current `main` at checkpoints. At the end of a run the agent asks him (issue + note in `docs/last-session.md`). Nothing reaches production unchecked.
-- **Agents never get production secrets.** The APK signing key lives only in the GitHub Environment `release` (restricted to the `release` branch, Martin as required reviewer); PR and `main` builds are debug-signed. Optionally a separate dev Firebase project.
+- **Agents never get production secrets.** The APK signing key lives only in the GitHub Environment `release` (restricted to the `release` branch, Martin as required reviewer) and, after C3, in a repo secret read only by the release workflow; PR and `main` builds are debug-signed. Optionally a separate dev Firebase project.
 - **One required check `ci-gate`:** an always-running job that depends on all other jobs and accepts skipped ones. Branch protection requires only this job, so path filters never block a merge.
 - Progress is visible in the repo: checkboxes in Part B (status), `docs/last-session.md` (handover from the previous session, blockers), `docs/session-history.md` (archive) plus PR history.
 
@@ -113,7 +113,7 @@ To make the minutes last (once the repo is private again):
 
 - Emulator E2E only when something under `app/` changed, and batched (agents collect several changes before pushing).
 - Full emulator suite nightly or before moving `release`.
-- If minutes get tight: make the repo public (no secrets in the repo; standard runners are free for public repos) or register the notebook as a self-hosted runner (also free; only runs while the notebook is on).
+- If minutes get tight: make the repo public (no secrets in the repo; standard runners are free for public repos) or register the notebook as a self-hosted runner (also free; only runs while the notebook is on). **Never both:** a self-hosted runner on a public repo runs code from anyone's PRs.
 
 ### A7. Database: SQLite in development, MariaDB in production
 
@@ -128,7 +128,7 @@ So that both databases really behave the same, these rules apply (also in `AGENT
 | Topic | Difference | Solution |
 |---|---|---|
 | `rev` numbers | SQLite has no `SEQUENCE` | Counter table `rev_counter` behind a function `next_rev()` with one implementation per database (MariaDB: `LAST_INSERT_ID(value+1)`, atomic; SQLite: `UPDATE … RETURNING`, single writer) |
-| Locks (worker jobs, pairing code) | SQLite has no `SELECT … FOR UPDATE` or `GET_LOCK` | Module `db/locks.py` with one implementation per database; for SQLite the file lock is enough because only one process writes |
+| Locks (worker jobs, pairing code) | SQLite has no `SELECT … FOR UPDATE` or `GET_LOCK` | Module `db/locks.py` with one implementation per database; for SQLite an OS file lock, which also works across processes (api and worker both write in dev) |
 | Data types | SQLite barely checks lengths and types | Only portable SQLAlchemy types (`Uuid`, `JSON`, a custom UTC `DateTime` type), length validation in Pydantic |
 | Time zones | SQLite stores text | One type for all timestamps: always UTC, made timezone-aware on read |
 | Migrations | SQLite has limited `ALTER` | Alembic with `render_as_batch=True`; every migration runs up and down on both databases in CI. Production: the worker migrates on start under a DB lock; migrations are **additive** (expand/contract) so the previous image keeps working |
@@ -199,7 +199,7 @@ Martin ticks these. An agent may tick one if it can verify the result itself (e.
   *Due before:* **Run 2** (2.8 FCM) · *Result:* app can integrate FCM
 - [ ] **M2** Optional: a second **dev Firebase project**, key as GitHub secret
   *Due before:* Run 2 (2.8, optional) · *Result:* agents can test real FCM delivery in the emulator
-- [ ] **M3** Create the **APK signing key** (one file, keep it safe!, back it up twice) and add it as a secret of the GitHub Environment `release` (deployment branch: `release` only, required reviewer: Martin) under the secret names the agent defines in 1.2 (`docs/release-signing.md`). Protect `release` (only Martin may push). Updates can only be installed if they are signed with the same key.
+- [ ] **M3** Create the **APK signing key** (one file, keep it safe!, back it up twice) and add it as a secret of the GitHub Environment `release` (deployment branch: `release` only, required reviewer: Martin) under the secret names the agent defines in 1.2 (`docs/release-signing.md`). Protect `release` (only Martin may push). At C3 the secrets move to repo secrets (C3.8). Updates can only be installed if they are signed with the same key.
   *Due before:* C1 · *Result:* signed APKs from CI
 - [ ] **M4** **Cloudflare:** DNS records for both subdomains (proxied), WAF skip rule for the app subdomain, Cloudflare Access (GitHub SSO) for the admin subdomain; note the team domain and the application's **audience (AUD) tag** (guide: `deploy/cloudflare.md`, written in 1.4)
   *Due before:* C1 · *Result:* reachability
@@ -230,7 +230,7 @@ Run 1 notes M1 under Open blockers in `docs/last-session.md` if it is still miss
 - [ ] 1.1.2 Minimal CI workflow `.github/workflows/ci.yml` with a lint job and the `ci-gate` job, so this first PR can satisfy the required check (1.2 extends it); confirms C0.3
 - [ ] 1.1.3 `branding.json` with a placeholder display name, short name, icon color; placeholder recorded in `docs/assumptions.md`
 - [ ] 1.1.4 `Makefile` with all targets from `AGENTS.md` (`setup`, `dev`, `test`, `lint`, `tokens`, `e2e`, `apk`); targets that are not built yet print which package adds them
-- [ ] 1.1.5 Lint configs: Ruff, ESLint (flat config), ktlint; all wired into `make lint`
+- [ ] 1.1.5 Lint configs: Ruff, ESLint (flat config), ktlint; all wired into `make lint` (install the tools in user space here; 1.3.1 folds them into `make setup`)
 - [ ] 1.1.6 `shared/strings/de.json` with the first keys and the key naming convention (by area, plural forms) documented in a comment file or README section
 - [ ] 1.1.7 `shared/design/tokens.json`: base + semantic tokens, light/dark, initial neutral palette (incl. `color.state.urgent`, `color.state.offline`)
 - [ ] 1.1.8 Token generator in `tools/` → TS (`tokens.generated.ts`), CSS (`tokens.generated.css`), Android XML (`colors_generated.xml`); `make tokens`; a check mode that fails on stale generated files, run by `make lint`
@@ -253,8 +253,8 @@ Run 1 notes M1 under Open blockers in `docs/last-session.md` if it is still miss
 - [ ] 1.2.6 Audits: `pip-audit`, `npm audit` (fail level recorded in `docs/assumptions.md`)
 - [ ] 1.2.7 Architecture checks in `tools/`, run by `make lint`: raw SQL only in `backend/app/db/dialects/`, no direct clock calls in logic code, no DB access from JS
 - [ ] 1.2.8 APK build job: debug-signed on PRs and `main`, APK as CI artifact (skipped until 1.5 creates the Expo project)
-- [ ] 1.2.9 Release-signing workflow: runs only on `release`, inside Environment `release`; defines the signing secret names; fork PRs never get secrets; `versionCode` strictly increasing (e.g. from the run number); the app version is defined once in the repo and read by both the APK build and the backend (= "latest app version", README 7); signed APK attached to a GitHub Release
-- [ ] 1.2.10 `docs/release-signing.md`: how Martin creates the key, backs it up twice and adds the secrets (input for M3)
+- [ ] 1.2.9 Release-signing workflow: runs only on push to `release`, inside Environment `release` (after C3: same secret names as repo secrets, no Environment; one switch documented in 1.2.10); defines the signing secret names; fork PRs never get secrets; app version in `app/version.json` (name + `versionCode`), read by the APK build and the backend (= "latest app version", README 7, 10); the workflow fails if `versionCode` is not higher than the last GitHub Release's; signed APK attached to a GitHub Release
+- [ ] 1.2.10 `docs/release-signing.md`: how Martin creates the key, backs it up twice and adds the secrets (input for M3), and the C3 switch to repo secrets (input for C3.8)
 - [ ] 1.2.11 Emulator job (KVM on standard runners), empty suite, only when `app/` changed
 - [ ] 1.2.12 `ci-gate` job: `if: always()`, needs every job, fails on `failure`/`cancelled`, accepts `skipped`
 - [ ] 1.2.13 Acceptance: a docs-only PR skips the path-filtered jobs and still merges; a full run on the empty project is green (both PR links noted in this PR)
@@ -283,9 +283,9 @@ Run 1 notes M1 under Open blockers in `docs/last-session.md` if it is still miss
 - [ ] 1.4.1 Configuration (Pydantic settings): `DATABASE_URL`, `MASTER_KEY`, `SETUP_TOKEN`, `CF_ACCESS_TEAM_DOMAIN`, `CF_ACCESS_AUD`, `FAMAPP_DEV`, host names; fail fast on missing values outside dev
 - [ ] 1.4.2 JSON logging with request ID; no todo content in logs
 - [ ] 1.4.3 FastAPI app factory with app/admin **host separation** (dev: admin on port 5000); no `/docs` or `/openapi.json` in production
-- [ ] 1.4.4 Alembic (`render_as_batch=True`, empty baseline) and a schema check: DB at the code's head revision or a descendant of it (so the previous image keeps running after a migration)
+- [ ] 1.4.4 Alembic (`render_as_batch=True`, empty baseline) and a schema check: DB at the code's head revision or at a revision the code does not know (= newer; so the previous image keeps running after a migration, decisions section 10)
 - [ ] 1.4.5 `/api/health`: 503 until the schema check from 1.4.4 passes, 200 afterwards
-- [ ] 1.4.6 Worker entrypoint: runs migrations under the DB lock on start, then starts the (still empty) scheduler
+- [ ] 1.4.6 Worker entrypoint: runs migrations under the DB lock on start (skips with a warning if the DB is at a revision the code does not know), then starts the (still empty) scheduler; test: an older code version starts against a newer schema
 - [ ] 1.4.7 Cloudflare Access JWT check on the admin host (team keys fetched and cached, audience tag checked, 404 on missing/invalid; off only with `FAMAPP_DEV=1`); tests with locally signed tokens and a fake key set
 - [ ] 1.4.8 Python `t()` helper reading `shared/strings`, passing the string vectors
 - [ ] 1.4.9 Admin base template (Jinja2) using `tokens.generated.css`, htmx vendored
@@ -327,11 +327,11 @@ Run 1 notes M1 under Open blockers in `docs/last-session.md` if it is still miss
 
 *Acceptance (automated):* migration up/down on SQLite and MariaDB in CI.
 
-- [ ] 1.7.1 `rev_counter` and `next_rev()` per dialect (MariaDB `LAST_INSERT_ID(value+1)`, SQLite `UPDATE … RETURNING`); concurrency test marked `mariadb`
+- [ ] 1.7.1 `rev_counter` and `next_rev()` per dialect (MariaDB `LAST_INSERT_ID(value+1)`, SQLite `UPDATE … RETURNING`), always called inside the writing transaction so the counter row lock makes commit order equal `rev` order (otherwise a delta sync can skip a row committed late); concurrency test marked `mariadb`
 - [ ] 1.7.2 Common columns for synced tables (`id`, `rev`, `created_at`, `updated_at`, `deleted_at`)
 - [ ] 1.7.3 `users` (incl. time zone), `user_settings` (base fields incl. quiet hours per weekday, needed by 2.9; 3.2 extends them)
 - [ ] 1.7.4 `devices` (incl. app version, last sync, `device_status`), `device_tokens`
-- [ ] 1.7.5 `notifications`, `deliveries`
+- [ ] 1.7.5 `notifications`, `deliveries`, `alarm_firings` (the engine sends `alarm_firing` ops from 2.5.7 on)
 - [ ] 1.7.6 `secrets`, `audit_log`, `conflict_log`, `job_log`
 - [ ] 1.7.7 Up/down test for every migration on both databases (down is never run in production); check that flags destructive operations (A7: additive only)
 - [ ] **1.7 done** · PR:
@@ -380,7 +380,7 @@ Run 1 notes M1 under Open blockers in `docs/last-session.md` if it is still miss
 
 - [ ] 1.11.1 Protocol layer: version header (current + previous), minimum app version with a clear error, latest app version and server time in every response
 - [ ] 1.11.2 `GET /api/sync`: delta across all synced tables by `rev`, per-user visibility, tombstones, pagination
-- [ ] 1.11.3 `POST /api/sync/push`: operation dispatcher, idempotency by op UUID, per-op result (ok / rejected / retry), timestamps corrected by clock skew; handlers for `ack` (→ `deliveries`) and `device_status`; later runs register more operations
+- [ ] 1.11.3 `POST /api/sync/push`: operation dispatcher, idempotency by op UUID, per-op result (ok / rejected / retry), timestamps corrected by clock skew; handlers for `ack` (→ `deliveries`), `device_status` and `alarm_firing` (→ `alarm_firings`); later runs register more operations
 - [ ] 1.11.4 `POST /api/devices/me/fcm-token`
 - [ ] 1.11.5 Admin CLI "test notification" (creates a notification; the FCM wake-up follows in 2.8)
 - [ ] 1.11.6 Acceptance tests incl. concurrent pushes (`mariadb` marker)
@@ -430,7 +430,7 @@ Run 1 notes M1 under Open blockers in `docs/last-session.md` if it is still miss
 - [ ] 2.3.5 core: backoff, protocol version, too-old app error, "update available"
 - [ ] 2.3.6 core: sync status event (`online` / `offline` / `server_unreachable`, unsent count)
 - [ ] 2.3.7 core: integration test against the real dev backend (`make dev`)
-- [ ] 2.3.8 android: Room database (mirror tables, outbox, auth, sync state) with the migration policy from 2.1.1
+- [ ] 2.3.8 android: Room database (mirror tables incl. own `users`/`user_settings` rows, needed for quiet hours in 2.9.3 and 2.9.6; outbox, auth, sync state) with the migration policy from 2.1.1
 - [ ] 2.3.9 android: token storage in the Keystore, refresh flow
 - [ ] 2.3.10 android: wiring `engine-core` to Room and HTTP
 - [ ] 2.3.11 Acceptance tests: week without server + restart, rejected entry does not block, schema change keeps the outbox (CI)
@@ -440,11 +440,11 @@ Run 1 notes M1 under Open blockers in `docs/last-session.md` if it is still miss
 
 *Acceptance (automated):* planner vectors incl. DST and time zones, locally.
 
-- [ ] 2.4.1 core: display entry model, stable keys (README 3.5), notification ID derivation
+- [ ] 2.4.1 core: display entry model, stable keys (README 3.5), notification ID derivation; shown state per key + planned minute (a display moved to a new time is shown again)
 - [ ] 2.4.2 core: next time over all sources present so far (scheduled server notifications, test displays; later runs add sources)
 - [ ] 2.4.3 core: everything due, catch-up marked "late", expired entries discarded
 - [ ] 2.4.4 Planner vectors in `shared/test-vectors/` incl. DST and time-zone changes
-- [ ] 2.4.5 android: alarm scheduler with `setAlarmClock` and `setExactAndAllowWhileIdle`, switchable via engine setting; until C1: `setAlarmClock` for high priority, otherwise `setExactAndAllowWhileIdle`
+- [ ] 2.4.5 android: alarm scheduler with `setAlarmClock` and `setExactAndAllowWhileIdle`, switchable via engine setting (changeable on a real phone without a rebuild, needed for the C1 comparison); until C1: `setAlarmClock` for high priority, otherwise `setExactAndAllowWhileIdle`
 - [ ] **2.4 done** · PR:
 
 #### 2.5 Display, receivers, WorkManager
@@ -459,7 +459,7 @@ Run 1 notes M1 under Open blockers in `docs/last-session.md` if it is still miss
 - [ ] 2.5.6 WorkManager periodic sync (15 min)
 - [ ] 2.5.7 Record every alarm firing (alarm type, idle, network, sync result and duration) → outbox op `alarm_firing`
 - [ ] 2.5.8 Report notification permission and channel importance with each sync (`device_status`)
-- [ ] 2.5.9 Config plugins: receivers and permissions (`USE_EXACT_ALARM`, `POST_NOTIFICATIONS`, `RECEIVE_BOOT_COMPLETED`)
+- [ ] 2.5.9 Config plugins: receivers and permissions (`USE_EXACT_ALARM`, `POST_NOTIFICATIONS`, `RECEIVE_BOOT_COMPLETED`; plus `SCHEDULE_EXACT_ALARM` with `maxSdkVersion` 32 if `minSdk` < 33)
 - [ ] 2.5.10 Emulator tests: forced Doze, reboot, time zone change, no network
 - [ ] **2.5 done** · PR:
 
@@ -507,7 +507,7 @@ Run 1 notes M1 under Open blockers in `docs/last-session.md` if it is still miss
 Do 2.9.5 (quiet-hours function) first; 2.9.2 and 2.9.3 depend on it.
 
 - [ ] 2.9.1 Watchdog job (every minute): server notifications without ack → wake-ups after 2, 10, 60 min, then "not delivered"
-- [ ] 2.9.2 Heartbeat: device without sync for > 6 h outside quiet hours → notice to the other person and in the admin UI (needs the quiet-hours function from 2.9.5)
+- [ ] 2.9.2 Device without sync for > 6 h outside quiet hours → notice to the other person and in the admin UI (needs the quiet-hours function from 2.9.5)
 - [ ] 2.9.3 Engine: "Server nicht erreichbar" system notification (network available, sync failing for 3 h outside quiet hours, once then after 24 h; the extra sentence about urgent todos in the outbox follows in 3.8, when todos exist)
 - [ ] 2.9.4 Acceptance tests: backend with fast-forwarded clock; `engine-core`: no notification while offline
 - [ ] 2.9.5 Quiet-hours function (per weekday, crossing midnight belongs to the start day) in Python and `engine-core`, with first vectors in `shared/test-vectors/`; 3.1 extends the vectors, 3.7 adds TS
@@ -540,7 +540,7 @@ Do 2.9.5 (quiet-hours function) first; 2.9.2 and 2.9.3 depend on it.
 
 *Acceptance (automated):* job test with fast-forwarded clock; backend test: `alarm_firing` ops stored and aggregated.
 
-- [ ] 2.12.1 `alarm_firings` table and the `alarm_firing` op handler
+- [ ] 2.12.1 Aggregation queries over `alarm_firings` (table and op handler exist since 1.7.5 / 1.11.3)
 - [ ] 2.12.2 Observation job: test notifications to both users several times a day; on/off switch
 - [ ] 2.12.3 **Device-planned test displays** (scheduled server notifications shown via the device's own alarm, also at likely-idle times)
 - [ ] 2.12.4 Admin evaluation: delivery rate, delay median/p95, **pre-display sync success per device, alarm type and idle state**, sync duration median/p95
@@ -552,7 +552,7 @@ Do 2.9.5 (quiet-hours function) first; 2.9.2 and 2.9.3 depend on it.
 *Acceptance (automated):* file exists.
 
 - [ ] 2.13.1 Step-by-step guide for C1 (below), written as checkboxes, incl. the hardware test list and the alarm-type decision criteria
-- [ ] 2.13.2 Open the issue asking Martin to move `release`
+- [ ] 2.13.2 Bump `app/version.json`; open the issue asking Martin to move `release`
 - [ ] **2.13 done** · PR:
 
 ---
@@ -585,9 +585,9 @@ Open issues from C1 take priority over new packages.
 - [ ] Agent asked Martin to move `release` to `main` and reported C2. **It does not stop** but starts Run 4 right away (C2 blocks nothing).
 
 - [ ] **3.0** Break 3.1–3.13 into sub-tasks in this file (same format as Runs 1 and 2)
-- [ ] **3.1** Spec `docs/spec-todos.md`, test vectors for levels (incl. `due_soon`, end-of-day downgrade of explicit urgent), quiet hours per weekday, **modes** (effective mode, manual end, schedule, `dnd` catch-up), per-user intervals, nag window, overdue slots, snooze (2 Std./Bis morgen, combined), nag times, rotation, RRULE, conflicts; edge cases: level boundaries (exactly 1 / 4 weeks), the "interval" of calendar-rule series for relative thresholds; display keys for batched activity, quiet-hours catch-up without summary and `dnd` catch-up (added to README 3.5) · PR:
+- [ ] **3.1** Spec `docs/spec-todos.md`, test vectors for levels (incl. `due_soon`, end-of-day downgrade of explicit urgent via `urgent_downgrade_at`, also for "both"), quiet hours per weekday, **modes** (effective mode, manual end, schedule, `dnd` catch-up), per-user intervals, nag window, overdue slots, snooze (2 Std./Bis morgen, combined), nag times, rotation, RRULE, conflicts; edge cases: level boundaries (exactly 1 / 4 weeks), the "interval" of calendar-rule series for relative thresholds; display keys for batched activity, quiet-hours catch-up without summary and `dnd` catch-up (added to README 3.5) · PR:
   *Acceptance:* vectors exist and load in all three languages
-- [ ] **3.2** Backend: migrations (`people`, `categories`, `todos` incl. `lead_time` and `urgent_sent_at`, `todo_series` incl. `replace_open`, `todo_snoozes` incl. combined snooze, `todo_claims`, `activity_events`; `user_settings` extended with mode, mode end, mode schedule and all per-user intervals), seed data, **activity events written for every todo action** (push, REST, worker), sync operations, conflict logic per field group, conflict log · PR:
+- [ ] **3.2** Backend: migrations (`people`, `categories`, `todos` incl. `lead_time`, `urgent_sent_at` and server-computed `urgent_downgrade_at`, `mode_changes`, `todo_series` incl. `replace_open`, `todo_snoozes` incl. combined snooze, `todo_claims`, `activity_events`; `user_settings` extended with mode, mode end, mode schedule and all per-user intervals), seed data, **activity events written for every todo action** (push, REST, worker), sync operations, conflict logic per field group, conflict log · PR:
   *Acceptance:* conflict scenarios (completed offline + title changed, delete vs. edit, clock skew)
 - [ ] **3.3** Backend: activity notifications (only: new todo for me/both; completed/dismissed for me/both or created by me; "Mach ich" on my urgent todo) with batching and collection until the first summary, explicit urgent incl. the night special case, claims, per-recipient delivery status for the sender, each user's next nag window start computed and synced to the other user (sender hint), wake-up on status change of nagging todos, **mode-aware** sending (no display expected → normal priority) · PR:
   *Acceptance:* tests with fast-forwarded clock; edits/deletions do not notify
@@ -601,13 +601,13 @@ Open issues from C1 take priority over new packages.
   *Acceptance:* E2E in the emulator: backend stopped → banner visible while editing, change kept; backend back → change synced, banner and marker gone; urgent todo sent while backend is down shows the prominent marker
 - [ ] **3.8** **Engine II:** summaries (incl. `due_soon` and the quiet-hours catch-up in the first summary), scheduled reminders (lead time, at `due_at`), nagging (explicit per todo incl. "Mach ich"; overdue as **one combined notification per user** at the computed slots), nag window, quiet hours, **modes** (`remind` / `essentials` / `dnd`, schedule, `dnd` catch-up), snooze (30 min / 2 Std. / Bis morgen, combined), DND bypass (second urgent channel), "Server nicht erreichbar" extra sentence for urgent todos in the outbox, actions from the notification incl. 30 s undo · PR:
   *Acceptance:* planner vectors; emulator: "Done" action without the app open stops nagging, undo restores it
-- [ ] **3.9** Watchdog for all device-planned displays (summaries, nags, scheduled reminders; calendar in 4.5): server computes expected keys with the shared vectors (mode-aware, using the mode valid at the planned time), delivery records per repetition, retries with high priority when a late display follows (decisions section 4) · PR:
+- [ ] **3.9** Watchdog for all device-planned displays (summaries, nags, scheduled reminders; calendar in 4.5): server computes expected keys with the shared vectors (mode-aware, using the mode valid at the planned time), delivery records per key + planned minute, server notifications expected only when the device will display them (not while batched, collected for the first summary or suppressed by the mode), retries with high priority when a late display follows (decisions section 4) · PR:
   *Acceptance:* backend test with fast-forwarded clock
 - [ ] **3.10** Series: UI with pickers, RRULE in the client, validation and instance creation in the worker, rotation, dismissed rule, `replace_open` (default on for calendar rules), relative level thresholds, reopen removes untouched next instance, edit/pause/delete rules · PR:
   *Acceptance:* vectors (incl. relative thresholds); "every 2 weeks, rotating" and "every 1st Monday" as E2E
 - [ ] **3.11** **Activity view** "Aktivität": list, filters (person, type, todo), tap opens todo, "nachträglich synchronisiert" marker, 90-day local window + server paging; engine: Room table and sync for `activity_events` · PR:
   *Acceptance:* E2E: complete, snooze, postpone on device A → events with actor and time on device B; offline action shows the marker after sync
-- [ ] **3.12** Screenshots of all screens (light and dark) as CI artifact, checklist `docs/checkpoint-c2.md` · PR:
+- [ ] **3.12** Screenshots of all screens (light and dark) as CI artifact, checklist `docs/checkpoint-c2.md`, bump `app/version.json` · PR:
   *Acceptance:* artifact exists
 - [ ] **3.13** Apply the alarm-type decision from C1 (default and, if chosen, the fallback from decisions section 11) in the engine setting; remove the interim rule · PR:
   *Acceptance:* engine test for the chosen default; if C1 is not decided yet, mark ⏸ and continue
@@ -645,7 +645,7 @@ Issues from C2 take priority.
   *Acceptance:* fake runs in `make dev`
 - [ ] **4.2** `CalendarSource` + `google_api` (incremental, rebuild; window applied server-side because `syncToken` excludes `timeMin`/`timeMax`), fetch job, `calendar_sources`, `calendar_events`, rev sync (device window −1 to +3 months) · PR:
   *Acceptance:* tests against the fake
-- [ ] **4.3** Wizard/admin: enter OAuth client, Google login, choose calendars, color, "notify: user A/B", test fetch, warning on expired token · PR:
+- [ ] **4.3** Admin UI → Settings (not the wizard, which is locked by then): enter OAuth client, Google login, choose calendars, color, "notify: user A/B", test fetch, warning on expired token · PR:
   *Acceptance:* E2E against the fake (OAuth flow mocked)
 - [ ] **4.4** App: agenda, week and month views, toggle sources · PR:
   *Acceptance:* emulator E2E
@@ -659,7 +659,7 @@ Issues from C2 take priority.
   *Acceptance:* E2E: browser (Playwright) + emulator approves
 - [ ] **4.9** Admin UI complete (activity page reads `activity_events`; current mode per user): statistics (incl. "Nerv-Level": notifications per user/day by class, snooze/postpone/claim counts, muted-channel warning from `device_status`), activity, conflicts, logs, settings (incl. per-user defaults and level thresholds), tools · PR:
   *Acceptance:* page tests
-- [ ] **4.10** One-page quick guide for Martin's wife (German), checklist `docs/checkpoint-c3.md` · PR:
+- [ ] **4.10** One-page quick guide for Martin's wife (German), checklist `docs/checkpoint-c3.md`, bump `app/version.json` · PR:
   *Acceptance:* files exist
 
 ---
@@ -673,7 +673,7 @@ Issues from C2 take priority.
 - [ ] C3.5 Full pass through the hardware test matrix (list in the checkpoint document)
 - [ ] C3.6 **Coolify DB backups switched on**
 - [ ] C3.7 Quick guide gone through with his wife; observation job switched off
-- [ ] C3.8 **GitHub repo made private again** (Settings → General → Danger Zone); Actions usage and the minute-saving rules in A6 checked
+- [ ] C3.8 **GitHub repo made private again** (Settings → General → Danger Zone); signing secrets moved to repo secrets and the release workflow switched (`docs/release-signing.md`); the agent rule "merge only when `ci-gate` is green" applies from now on (A4); Actions usage and the minute-saving rules in A6 checked
 - [ ] **MVP done:** two weeks of daily use without a lost notification
 
 ---
@@ -681,7 +681,7 @@ Issues from C2 take priority.
 ### 🔁 Afterwards: bug loop and more features
 
 - Martin files bugs or wishes as GitHub issues (template: what happened, what was expected, which device, approximate time). An agent works through issues one by one under the same rules (Part A).
-- Martin moves `release` when he wants an update.
+- Martin moves `release` when he wants an update; the agent bumps `app/version.json` in a PR first.
 - More features, each as its own run with a short checkpoint, tracked here with checkboxes and sub-tasks like Runs 1 and 2:
   - [ ] Backups: retention, external copy, **restore test** (Martin, because it involves production data)
   - [ ] Shopping list
@@ -727,7 +727,7 @@ How long the runs take depends on how long an agent can work in one go. Work pac
 
 | Risk | Mitigation |
 |---|---|
-| Emulator tests do not reproduce Samsung or real Doze | hardware list at C1/C3, observation job, watchdog, heartbeat; plan B foreground service |
+| Emulator tests do not reproduce Samsung or real Doze | hardware list at C1/C3, observation job, watchdog, "device without sync" notice; plan B foreground service |
 | Doze throttles `setExactAndAllowWhileIdle` (about once per 9 min per app) | single-alarm planner, `setAlarmClock` for high priority |
 | An agent makes an assumption Martin wants differently | `docs/assumptions.md`, review at every checkpoint, correction via issue |
 | Agent code drifts from the architecture | `AGENTS.md`, specs before code, CI with architecture checks (e.g. no DB access from JS) |
@@ -745,3 +745,5 @@ How long the runs take depends on how long an agent can work in one go. Work pac
 | New server breaks old app versions | protocol version header, previous version supported, minimum app version, update notice |
 | Cloudflare Access bypassed via public VPS IP | backend validates the Access JWT on the admin host |
 | Repo forgotten as public | reminder in the C3 checklist |
+| After C3 no GitHub-enforced protection (private repo on Free) | agents merge only on green `ci-gate` (`AGENTS.md`); release workflow triggers only on `release` |
+| Release built without a version bump | release workflow fails unless `versionCode` is higher than the last release |
