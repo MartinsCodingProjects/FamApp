@@ -57,9 +57,6 @@ Whenever you stop and wait for a new prompt (run done, blocked, context running 
 ### Summary
 <3–6 bullets: what was done, notable choices (link assumptions.md entries)>
 
-### Structural decisions
-<one line each with the assumptions.md entry; "none">
-
 ### Needs Martin (review / decision)
 <optional: what to review, which decision, issue links; "none">
 
@@ -100,7 +97,7 @@ Work on your own; nobody answers questions mid-session. In every case below: ope
 1. User-visible behavior is not covered by the README or decisions.
 2. Something irreversible is about to happen: package name, signing key, channel IDs, a migration that deletes data, changes to `release`, repo settings.
 3. Going against a ✅ decision or the README.
-4. A structural decision that is hard to undo once later packages depend on it and the docs give no direction (e.g. replacing a planned library or service, changing the sync protocol contract, a new external service, cost or privacy impact, security/auth).
+4. A decision that is hard to undo once later packages depend on it and the docs give no direction (e.g. replacing a planned library or service, changing the sync protocol contract, a new external service, cost or privacy impact, security/auth).
 
 **Park and continue** with independent sub-tasks (stop only when none are left):
 
@@ -111,7 +108,7 @@ Also stop at the end of a run (section 2) and before context runs out (at a sub-
 
 Not a reason to stop: GitHub Actions free minutes used up (only possible once the repo is private again after C3). Continue with home-server packages (backend, `engine-core`, web), batch Android changes and note it under **Open blockers**.
 
-Decide everything else yourself (docs first, then the simplest option that is easy to change later) and record it in `docs/assumptions.md` (date, package, assumption, reason). Mark **structural** decisions (anything later packages build on: layout beyond README 12, new dependencies or tools, data model, API or sync payload shape, test or CI infrastructure, cross-language rules) with **[structural]** and also list them in the PR description and under **Structural decisions** in `docs/last-session.md`, so Martin sees them.
+Decide everything else yourself (docs first, then the simplest option that is easy to change later) and record it in `docs/assumptions.md` (date, package, assumption, reason).
 
 ---
 

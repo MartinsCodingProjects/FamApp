@@ -39,11 +39,11 @@ The plan is organized for **autonomous work by AI agents**. Martin only steps in
 
 ### A3. When an agent stops and asks
 
-An agent stops and asks **only** in the cases listed in `AGENTS.md` section 3. In short: it **stops and waits** when Martin must decide (user-visible behavior not covered by README or decisions; something irreversible such as package name, a migration that deletes data, signing key, changes to `release`; going against a ✅ decision; a hard-to-undo structural decision the docs give no direction on). It **parks the sub-task and continues** with independent work when access, an account or a secret is missing, or CI stays red / an external service is down. Every run also ends the session.
+An agent stops and asks **only** in the cases listed in `AGENTS.md` section 3. In short: it **stops and waits** when Martin must decide (user-visible behavior not covered by README or decisions; something irreversible such as package name, a migration that deletes data, signing key, changes to `release`; going against a ✅ decision; a hard-to-undo decision the docs give no direction on). It **parks the sub-task and continues** with independent work when access, an account or a secret is missing, or CI stays red / an external service is down. Every run also ends the session.
 
 Not a reason to stop: GitHub Actions minutes used up (only possible once the repo is private again after C3); see A6.
 
-Everything else the agent decides itself and records in `docs/assumptions.md` (structural decisions marked **[structural]** and also reported in the PR and `docs/last-session.md`). Martin can review the assumptions at the next checkpoint and have them corrected.
+Everything else the agent decides itself and records in `docs/assumptions.md`. Martin can review the assumptions at the next checkpoint and have them corrected.
 
 ### A4. Branches, deployment, secrets
 

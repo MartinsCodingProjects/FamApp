@@ -32,11 +32,6 @@ Resolve every decision in this order:
 
 1. **The docs decide.** Use the precedence in AGENTS.md section 1 (behavior: `decisions.md` ✅ > README > `decisions.md` 🟡 > BUILDPLAN > `assumptions.md`). If docs contradict each other, fix the lower-ranked one in the same PR.
 2. **Not in the docs and not a Martin decision** (see 4.1): decide yourself. Pick the simplest option that fits the architecture rules, is easy to change later and does not block later packages. Record it in `docs/assumptions.md` (date, package, assumption, reason).
-3. **Structural decisions** must be made visible, not just recorded. Structural means anything later packages build on: module or directory layout beyond README 12, new dependencies or tools, data model or table shape, API or sync payload shape, protocol versioning, test infrastructure, CI layout, cross-language rules. For each one:
-   - entry in `docs/assumptions.md` marked **[structural]**,
-   - listed in the PR description under **Assumptions**,
-   - listed in `docs/last-session.md` under **Structural decisions**,
-   - listed in your final chat report.
 
 ## 4. When to stop
 
@@ -47,7 +42,7 @@ Stop the session (do not continue with other sub-tasks) when a decision is impor
 - user-visible behavior not covered by README or decisions (wording, flows, what a notification does, defaults Martin will notice),
 - anything irreversible: package name, signing key, channel IDs, data-deleting migrations, `release`, repo settings, secrets,
 - going against a ✅ decision or the README, or a 🟡 decision that turns out to be wrong,
-- a structural decision that would be hard to undo once later packages depend on it **and** the docs give no direction (e.g. replacing a planned library or service, changing the sync protocol contract, a new external service, anything with cost or privacy impact),
+- a decision that would be hard to undo once later packages depend on it **and** the docs give no direction (e.g. replacing a planned library or service, changing the sync protocol contract, a new external service, anything with cost or privacy impact),
 - anything touching security, auth, or what data leaves the server.
 
 How: open an issue labeled `question` with the options and your recommendation, mark the sub-task ⏸ in BUILDPLAN, add it to **Open blockers** and **Needs Martin**, push and leave your current work in a clean state (green, committed, draft PR), then end the session (section 5).
@@ -74,6 +69,6 @@ Move or push `release`, change repo settings, rulesets or environments, create o
 2. Final chat report to Martin, short:
    - **Done:** sub-tasks / PRs (with links), CI state
    - **Stopped because:** run end / Martin decision / blocked / context
-   - **Structural decisions:** one line each, with the `assumptions.md` reference
+   - **Assumptions:** new `docs/assumptions.md` entries, one line each
    - **Needs Martin:** decisions, reviews, M-tasks that are now due, issue links
    - **Next:** what the next `/next` will pick up
