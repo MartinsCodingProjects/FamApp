@@ -373,7 +373,7 @@ Run 1 notes M1 under Open blockers in `docs/last-session.md` if it is still miss
 
 *Acceptance (automated):* delta across several tables, pagination, tombstones, idempotency, concurrency, old protocol version still served, too-old app rejected.
 
-- [ ] 1.11.1 Protocol layer: version header (current + previous), minimum app version with a clear error, latest app version and server time in every response
+- [ ] 🚧 `pkg/1.11-sync-endpoints` 1.11.1 Protocol layer: version header (current + previous), minimum app version with a clear error, latest app version and server time in every response
 - [ ] 1.11.2 `GET /api/sync`: delta across all synced tables by `rev`, per-user visibility, tombstones, pagination
 - [ ] 1.11.3 `POST /api/sync/push`: operation dispatcher, idempotency by op UUID, per-op result (ok / rejected / retry), timestamps corrected by clock skew; handlers for `ack` (→ `deliveries`), `device_status` and `alarm_firing` (→ `alarm_firings`); later runs register more operations
 - [ ] 1.11.4 `POST /api/devices/me/fcm-token`
