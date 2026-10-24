@@ -12,7 +12,7 @@
 - Backend: config, JSON logs, host-separated app/admin surfaces, Cloudflare Access check, health + schema check, worker with migrations under lock, Alembic migrations 0001–0005, `next_rev()`, AES-GCM secret store, setup wizard + admin login (TOTP), device auth with the reuse rule, sync endpoints per `docs/spec-sync.md`.
 - App: Expo SDK 58 project, local engine module (`engine-core` sources compiled into `engine-android`), `t()`, ThemeProvider, start screen; Maestro E2E in the emulator.
 - Specs written: `docs/spec-backend-skeleton.md`, `docs/spec-sync.md`, `docs/spec-setup-wizard.md`, `docs/spec-device-auth.md`; `docs/release-signing.md` (input for M3), `deploy/cloudflare.md` (input for M4).
-- ~60 new rows in `docs/assumptions.md` (all dated 2026-10-24).
+- 75 new rows in `docs/assumptions.md` (all dated 2026-10-24).
 
 ### Needs Martin (review / decision)
 
