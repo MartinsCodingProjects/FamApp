@@ -8,7 +8,7 @@ SHELL := bash
 TOOLS_PY := uv run --project tools python
 
 .PHONY: help setup dev test lint tokens e2e apk audit lint-python lint-js lint-kotlin lint-tokens lint-strings \
-	lint-arch test-tools test-backend test-js
+	lint-arch lint-workflows test-tools test-backend test-js
 
 help:
 	@echo "make setup | dev | test | lint | tokens | e2e | apk | audit"
@@ -39,8 +39,8 @@ test-js:
 	@if [ -f app/package.json ]; then cd app && npm ci --no-fund --no-audit && npm test; \
 	else echo "test-js: no Expo project yet (1.5), nothing to run"; fi
 
-## lint: Ruff, ESLint, ktlint, token staleness, string checks
-lint: lint-python lint-js lint-kotlin lint-tokens lint-strings lint-arch
+## lint: Ruff, ESLint, ktlint, token staleness, string checks, architecture checks, actionlint
+lint: lint-python lint-js lint-kotlin lint-tokens lint-strings lint-arch lint-workflows
 
 lint-python:
 	uv run --project tools ruff check .
@@ -60,6 +60,9 @@ lint-strings:
 
 lint-arch:
 	$(TOOLS_PY) tools/arch_check.py
+
+lint-workflows:
+	tools/actionlint.sh
 
 ## tokens: regenerate token files from shared/design/tokens.json
 tokens:

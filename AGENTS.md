@@ -130,10 +130,11 @@ Details: `BUILDPLAN.md` A6 and A7. Summary:
 | `make setup` | install tools in user space |
 | `make dev` | start backend, worker, admin, fakes locally |
 | `make test` | all locally possible tests (Python, JS, `engine-core`, test vectors) |
-| `make lint` | Ruff, ESLint, ktlint, string-key and token checks |
+| `make lint` | Ruff, ESLint, ktlint, string-key, token and architecture checks, actionlint |
 | `make tokens` | regenerate token files from `shared/design/tokens.json` |
 | `make e2e` | Playwright against a local instance |
 | `make apk` | CI only |
+| `make audit` | `pip-audit` and `npm audit` (also a CI job) |
 
 ---
 

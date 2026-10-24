@@ -240,18 +240,18 @@ Run 1 notes M1 under Open blockers in `docs/last-session.md` if it is still miss
 
 *Acceptance (automated):* CI green on the empty project; a PR that skips path-filtered jobs still merges.
 
-- [ ] 🚧 `pkg/1.2-ci` 1.2.1 Change-detection job (outputs per area: `backend`, `app`, `shared`, `tools`, `docs`); all other jobs use job-level `if:` conditions, no workflow-level `paths:`
-- [ ] 1.2.2 Lint job running `make lint` (incl. token staleness and string checks)
-- [ ] 1.2.3 Backend test job on SQLite (`uv`, pytest; a placeholder test until 1.3)
-- [ ] 1.2.4 Backend test job on **MariaDB** (service container, collation `utf8mb4_unicode_ci`, `DATABASE_URL=mysql+pymysql://…`), also runs `@pytest.mark.mariadb` tests (A7)
-- [ ] 1.2.5 JS unit test job (skipped until `app/` has code)
-- [ ] 1.2.6 Audits: `pip-audit`, `npm audit` (fail level recorded in `docs/assumptions.md`)
-- [ ] 1.2.7 Architecture checks in `tools/`, run by `make lint`: raw SQL only in `backend/app/db/dialects/`, no direct clock calls in logic code, no DB access from JS
-- [ ] 1.2.8 APK build job: debug-signed on PRs and `main`, APK as CI artifact (skipped until 1.5 creates the Expo project)
-- [ ] 1.2.9 Release-signing workflow: runs only on push to `release`, inside Environment `release` (after C3: same secret names as repo secrets, no Environment; one switch documented in 1.2.10); defines the signing secret names; fork PRs never get secrets; app version in `app/version.json` (name + `versionCode`), read by the APK build and the backend (= "latest app version", README 7, 10); the workflow fails if `versionCode` is not higher than the last GitHub Release's; signed APK attached to a GitHub Release
-- [ ] 1.2.10 `docs/release-signing.md`: how Martin creates the key, backs it up twice and adds the secrets (input for M3), and the C3 switch to repo secrets (input for C3.8)
-- [ ] 1.2.11 Emulator job (KVM on standard runners), empty suite, only when `app/` changed
-- [ ] 1.2.12 `ci-gate` job: `if: always()`, needs every job, fails on `failure`/`cancelled`, accepts `skipped`
+- [x] 1.2.1 Change-detection job (outputs per area: `backend`, `app`, `shared`, `tools`, `docs`); all other jobs use job-level `if:` conditions, no workflow-level `paths:`
+- [x] 1.2.2 Lint job running `make lint` (incl. token staleness and string checks)
+- [x] 1.2.3 Backend test job on SQLite (`uv`, pytest; a placeholder test until 1.3)
+- [x] 1.2.4 Backend test job on **MariaDB** (service container, collation `utf8mb4_unicode_ci`, `DATABASE_URL=mysql+pymysql://…`), also runs `@pytest.mark.mariadb` tests (A7)
+- [x] 1.2.5 JS unit test job (skipped until `app/` has code)
+- [x] 1.2.6 Audits: `pip-audit`, `npm audit` (fail level recorded in `docs/assumptions.md`)
+- [x] 1.2.7 Architecture checks in `tools/`, run by `make lint`: raw SQL only in `backend/app/db/dialects/`, no direct clock calls in logic code, no DB access from JS
+- [x] 1.2.8 APK build job: debug-signed on PRs and `main`, APK as CI artifact (skipped until 1.5 creates the Expo project)
+- [x] 1.2.9 Release-signing workflow: runs only on push to `release`, inside Environment `release` (after C3: same secret names as repo secrets, no Environment; one switch documented in 1.2.10); defines the signing secret names; fork PRs never get secrets; app version in `app/version.json` (name + `versionCode`), read by the APK build and the backend (= "latest app version", README 7, 10); the workflow fails if `versionCode` is not higher than the last GitHub Release's; signed APK attached to a GitHub Release
+- [x] 1.2.10 `docs/release-signing.md`: how Martin creates the key, backs it up twice and adds the secrets (input for M3), and the C3 switch to repo secrets (input for C3.8)
+- [x] 1.2.11 Emulator job (KVM on standard runners), empty suite, only when `app/` changed
+- [x] 1.2.12 `ci-gate` job: `if: always()`, needs every job, fails on `failure`/`cancelled`, accepts `skipped`
 - [ ] 1.2.13 Acceptance: a docs-only PR skips the path-filtered jobs and still merges; a full run on the empty project is green (both PR links noted in this PR)
 - [ ] **1.2 done** · PR:
 

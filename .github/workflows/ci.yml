@@ -64,7 +64,7 @@ jobs:
       - uses: actions/cache@v6
         with:
           path: .tools
-          key: tools-${{ hashFiles('tools/ktlint.sh') }}
+          key: tools-${{ hashFiles('tools/ktlint.sh', 'tools/actionlint.sh') }}
       - run: uv sync --project tools
       - run: npm ci --no-fund --no-audit
       - run: make lint

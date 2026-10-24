@@ -519,8 +519,9 @@ famapp/
 │  └─ test-vectors/         shared test cases (levels, quiet hours, modes, nag times, planner,
 │                           rotation, RRULE, conflicts, strings)
 ├─ tools/                   token generator (tokens.py), string/key checks (strings_check.py),
-│                           architecture checks, ktlint.sh, install-user-tools.sh, session-end.sh;
-│                           own uv project (pyproject.toml) with the tool tests in tests/
+│                           architecture checks (arch_check.py), CI helpers (ci-changes.sh, audit.sh,
+│                           emulator-suite.sh), ktlint.sh, actionlint.sh, install-user-tools.sh,
+│                           session-end.sh; own uv project (pyproject.toml) with the tool tests in tests/
 ├─ dev/
 │  ├─ fake-fcm/
 │  └─ fake-gcal/            with fixtures
@@ -543,7 +544,7 @@ famapp/
 │  ├─ docker-compose.yml    api + worker (MariaDB as Coolify resource)
 │  └─ cloudflare.md         DNS, WAF and Access settings
 └─ .github/
-   ├─ workflows/            CI
+   ├─ workflows/            ci.yml (all checks, ci-gate), release.yml (signed APK, push to release only)
    └─ ISSUE_TEMPLATE/       bug report, question
 ```
 
