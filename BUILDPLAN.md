@@ -259,17 +259,17 @@ Run 1 notes M1 under Open blockers in `docs/last-session.md` if it is still miss
 
 *Acceptance (automated):* `make dev` starts on the home server; fake FCM accepts calls.
 
-- [ ] 🚧 `pkg/1.3-dev-env` 1.3.1 `make setup`: `uv`, pinned Python, `fnm` + pinned Node, JDK and `make` via `tools/install-user-tools.sh`; user space only, idempotent, no root
-- [ ] 1.3.2 Backend project: `backend/pyproject.toml`, `uv` lockfile with pinned dependencies, pytest config incl. the `mariadb` marker
-- [ ] 1.3.3 Time provider: `Clock` interface, system clock, controllable fake clock (set "now", fast-forward) as a pytest fixture
-- [ ] 1.3.4 Database layer: engine/session from `DATABASE_URL` (default `sqlite:///./dev.db`), custom UTC `DateTime` type, portable types only (A7)
-- [ ] 1.3.5 Dialect modules `backend/app/db/dialects/` (SQLite, MariaDB) and `db/locks.py` with one implementation per database (file lock / `GET_LOCK`)
-- [ ] 1.3.6 Test fixtures: fresh SQLite DB per test; same suite runs against MariaDB in CI
-- [ ] 1.3.7 Fake FCM in `dev/fake-fcm/` (port 9101): accepts the FCM v1 send shape, records messages, endpoints to query and reset them for tests
-- [ ] 1.3.8 `make dev` starts every service that exists (one process list; 1.4 adds api/worker/admin), `make test` runs the backend tests
-- [ ] 1.3.9 `docker-compose.dev.yml` (MariaDB + services) for machines with Docker (notebook, CI)
-- [ ] 1.3.10 Acceptance tests: `make dev` smoke test hits fake FCM; UTC round-trip and lock tests on SQLite (and MariaDB in CI)
-- [ ] **1.3 done** · PR:
+- [x] 1.3.1 `make setup`: `uv`, pinned Python, `fnm` + pinned Node, JDK and `make` via `tools/install-user-tools.sh`; user space only, idempotent, no root
+- [x] 1.3.2 Backend project: `backend/pyproject.toml`, `uv` lockfile with pinned dependencies, pytest config incl. the `mariadb` marker
+- [x] 1.3.3 Time provider: `Clock` interface, system clock, controllable fake clock (set "now", fast-forward) as a pytest fixture
+- [x] 1.3.4 Database layer: engine/session from `DATABASE_URL` (default `sqlite:///./dev.db`), custom UTC `DateTime` type, portable types only (A7)
+- [x] 1.3.5 Dialect modules `backend/app/db/dialects/` (SQLite, MariaDB) and `db/locks.py` with one implementation per database (file lock / `GET_LOCK`)
+- [x] 1.3.6 Test fixtures: fresh SQLite DB per test; same suite runs against MariaDB in CI
+- [x] 1.3.7 Fake FCM in `dev/fake-fcm/` (port 9101): accepts the FCM v1 send shape, records messages, endpoints to query and reset them for tests
+- [x] 1.3.8 `make dev` starts every service that exists (one process list; 1.4 adds api/worker/admin), `make test` runs the backend tests
+- [x] 1.3.9 `docker-compose.dev.yml` (MariaDB + services) for machines with Docker (notebook, CI)
+- [x] 1.3.10 Acceptance tests: `make dev` smoke test hits fake FCM; UTC round-trip and lock tests on SQLite (and MariaDB in CI)
+- [x] **1.3 done** · PR #7
 
 #### 1.4 Backend skeleton
 

@@ -1,0 +1,38 @@
+# Local environment for machines with Docker (notebook, CI). The home server has no Docker
+# and uses SQLite + `make dev` instead. 1.4 adds api and worker.
+#
+#   docker compose -f docker-compose.dev.yml up -d --wait
+#   DATABASE_URL=mysql+pymysql://famapp:famapp@127.0.0.1:3306/famapp_test make test-backend
+#
+# Credentials are throwaway dev values for a local container, not secrets.
+name: famapp-dev
+
+services:
+  mariadb:
+    image: mariadb:11.4
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
+    environment:
+      MARIADB_ROOT_PASSWORD: root
+      MARIADB_DATABASE: famapp_test
+      MARIADB_USER: famapp
+      MARIADB_PASSWORD: famapp
+    ports:
+      - "127.0.0.1:3306:3306"
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 2s
+      timeout: 5s
+      retries: 60
+
+  fake-fcm:
+    image: python:3.12-slim
+    command: ["python", "/srv/server.py", "--host", "0.0.0.0", "--port", "9101"]
+    volumes:
+      - ./dev/fake-fcm:/srv:ro
+    ports:
+      - "127.0.0.1:9101:9101"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:9101/fake/health')"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
