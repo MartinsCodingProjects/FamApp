@@ -309,7 +309,7 @@ Run 1 notes M1 under Open blockers in `docs/last-session.md` if it is still miss
 
 *Acceptance (automated):* file exists and covers endpoints, operations, conflicts, error cases, protocol version header, minimum/latest app version, unknown fields (a doc test checks the required sections).
 
-- [ ] 1.6.1 Endpoints, auth headers, request/response shapes (`GET /api/sync`, `POST /api/sync/push`, `POST /api/devices/me/fcm-token`)
+- [ ] 🚧 `pkg/1.6-sync-spec` 1.6.1 Endpoints, auth headers, request/response shapes (`GET /api/sync`, `POST /api/sync/push`, `POST /api/devices/me/fcm-token`)
 - [ ] 1.6.2 Delta: `since`/`limit`, ordering by `rev`, per-user visibility, tombstones, pagination
 - [ ] 1.6.3 Operations: create, change field group, change status, delete, ack, snooze, `device_status`, `alarm_firing`; op UUID and idempotency
 - [ ] 1.6.4 Conflicts: last-write-wins per field group, deletion wins, clock-skew correction, tie rule, conflict log
