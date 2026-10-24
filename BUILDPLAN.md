@@ -240,7 +240,7 @@ Run 1 notes M1 under Open blockers in `docs/last-session.md` if it is still miss
 
 *Acceptance (automated):* CI green on the empty project; a PR that skips path-filtered jobs still merges.
 
-- [ ] 1.2.1 Change-detection job (outputs per area: `backend`, `app`, `shared`, `tools`, `docs`); all other jobs use job-level `if:` conditions, no workflow-level `paths:`
+- [ ] 🚧 `pkg/1.2-ci` 1.2.1 Change-detection job (outputs per area: `backend`, `app`, `shared`, `tools`, `docs`); all other jobs use job-level `if:` conditions, no workflow-level `paths:`
 - [ ] 1.2.2 Lint job running `make lint` (incl. token staleness and string checks)
 - [ ] 1.2.3 Backend test job on SQLite (`uv`, pytest; a placeholder test until 1.3)
 - [ ] 1.2.4 Backend test job on **MariaDB** (service container, collation `utf8mb4_unicode_ci`, `DATABASE_URL=mysql+pymysql://…`), also runs `@pytest.mark.mariadb` tests (A7)
