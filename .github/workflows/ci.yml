@@ -1,9 +1,13 @@
 name: ci
 
+# Path filtering happens in the `changes` job and job-level `if:` conditions, never in a
+# workflow-level `paths:` filter: `ci-gate` is the only required check and must always run.
+
 on:
   pull_request:
   push:
     branches: [main]
+  workflow_dispatch:
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -13,7 +17,37 @@ permissions:
   contents: read
 
 jobs:
-  # 1.2 adds change detection and the per-area jobs.
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.areas.outputs.backend }}
+      app: ${{ steps.areas.outputs.app }}
+      shared: ${{ steps.areas.outputs.shared }}
+      tools: ${{ steps.areas.outputs.tools }}
+      docs: ${{ steps.areas.outputs.docs }}
+      has_backend: ${{ steps.areas.outputs.has_backend }}
+      has_app: ${{ steps.areas.outputs.has_app }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - id: areas
+        env:
+          EVENT: ${{ github.event_name }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          if [ "$EVENT" = "pull_request" ]; then
+            git diff --name-only "$PR_BASE...$PR_HEAD" | tools/ci-changes.sh > areas.txt
+          elif [ "$EVENT" = "push" ] && [ -n "$BEFORE" ] && git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
+            git diff --name-only "$BEFORE" "$GITHUB_SHA" | tools/ci-changes.sh > areas.txt
+          else
+            tools/ci-changes.sh --all > areas.txt
+          fi
+          cat areas.txt
+          cat areas.txt >> "$GITHUB_OUTPUT"
+
   lint:
     runs-on: ubuntu-latest
     steps:
@@ -30,26 +64,137 @@ jobs:
       - uses: actions/cache@v6
         with:
           path: .tools
-          key: tools-${{ hashFiles('tools/ktlint.sh') }}
+          key: tools-${{ hashFiles('tools/ktlint.sh', 'tools/actionlint.sh') }}
       - run: uv sync --project tools
       - run: npm ci --no-fund --no-audit
       - run: make lint
 
-  test:
+  tools-test:
+    needs: changes
+    if: needs.changes.outputs.tools == 'true' || needs.changes.outputs.shared == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v10.3.2
-      - run: make test
+      - run: make test-tools
+
+  backend-sqlite:
+    needs: changes
+    if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.shared == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.3.2
+      - run: make test-backend
+
+  backend-mariadb:
+    needs: changes
+    if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.shared == 'true'
+    runs-on: ubuntu-latest
+    env:
+      # Throwaway credentials of a CI-only container, not a secret.
+      DATABASE_URL: mysql+pymysql://famapp:famapp@127.0.0.1:3306/famapp_test
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.3.2
+      # Started with `docker run` instead of `services:` because service containers cannot take
+      # server arguments, and the collation must be set on the server (A7).
+      - name: Start MariaDB
+        run: |
+          docker run -d --name mariadb -p 3306:3306 \
+            -e MARIADB_ROOT_PASSWORD=root -e MARIADB_DATABASE=famapp_test \
+            -e MARIADB_USER=famapp -e MARIADB_PASSWORD=famapp \
+            mariadb:11.4 --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+          for _ in $(seq 1 60); do
+            if docker exec mariadb healthcheck.sh --connect --innodb_initialized 2>/dev/null; then break; fi
+            sleep 2
+          done
+          docker exec mariadb healthcheck.sh --connect --innodb_initialized
+      - name: Check charset and collation
+        run: |
+          result="$(docker exec mariadb mariadb -ufamapp -pfamapp famapp_test -N -e \
+            'SELECT @@character_set_database, @@collation_database')"
+          echo "$result"
+          [ "$(echo "$result" | tr -s '[:space:]' ' ' | xargs)" = "utf8mb4 utf8mb4_unicode_ci" ]
+      - run: make test-backend
+
+  js-test:
+    needs: changes
+    if: needs.changes.outputs.has_app == 'true' && (needs.changes.outputs.app == 'true' || needs.changes.outputs.shared == 'true')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - run: make test-js
+
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.3.2
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - run: make audit
+
+  apk:
+    needs: changes
+    if: needs.changes.outputs.has_app == 'true' && (needs.changes.outputs.app == 'true' || needs.changes.outputs.shared == 'true')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 17
+      # Debug-signed (Android debug keystore). Release signing lives only in release.yml.
+      - run: make apk
+      - uses: actions/upload-artifact@v7
+        with:
+          name: app-debug-apk
+          path: app/android/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+
+  emulator:
+    needs: changes
+    if: needs.changes.outputs.app == 'true' || needs.changes.outputs.shared == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - uses: ReactiveCircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          disable-animations: true
+          script: tools/emulator-suite.sh
 
   ci-gate:
     if: always()
-    needs: [lint, test]
+    needs: [changes, lint, tools-test, backend-sqlite, backend-mariadb, js-test, audit, apk, emulator]
     runs-on: ubuntu-latest
     steps:
       - name: Check job results
+        env:
+          NEEDS: ${{ toJSON(needs) }}
         run: |
-          echo '${{ toJSON(needs) }}'
-          if [ "${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}" = "true" ]; then
+          echo "$NEEDS" | jq -r 'to_entries[] | "\(.key): \(.value.result)"'
+          if echo "$NEEDS" | jq -e 'to_entries | any(.value.result == "failure" or .value.result == "cancelled")' >/dev/null; then
+            echo "a required job failed or was cancelled"
             exit 1
           fi
