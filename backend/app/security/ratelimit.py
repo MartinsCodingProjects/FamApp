@@ -38,3 +38,8 @@ class RateLimiter:
             # drop stale keys so memory stays bounded
             for stale in [k for k, (w, _) in self._hits.items() if w != start]:
                 del self._hits[stale]
+
+    def retry_after(self) -> int:
+        """Seconds until the current window ends (for a Retry-After header)."""
+        seconds = self.window.total_seconds()
+        return max(1, int(seconds - self.clock.now().timestamp() % seconds))
