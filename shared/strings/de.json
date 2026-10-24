@@ -1,4 +1,5 @@
 {
+  "admin.title": "{name} Admin",
   "app.update.available": "Update verfügbar",
   "mode.dnd.until": "Nicht stören bis {time}",
   "notification.overdue.title": {

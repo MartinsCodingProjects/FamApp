@@ -1,0 +1,10 @@
+**
+!backend/pyproject.toml
+!backend/uv.lock
+!backend/alembic.ini
+!backend/migrations/
+!backend/app/
+!shared/strings/
+!branding.json
+!app/version.json
+**/__pycache__

@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{{ t("admin.title", name=branding().displayName) }}{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', path='tokens.generated.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', path='admin.css') }}">
+  <script src="{{ url_for('static', path='htmx.min.js') }}" defer></script>
+</head>
+<body>
+  <header class="admin-header">
+    <span class="admin-brand">{{ t("admin.title", name=branding().displayName) }}</span>
+  </header>
+  <main class="admin-main">
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

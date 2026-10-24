@@ -1,0 +1,32 @@
+# Production stack for Coolify (README 10, decisions section 3). Coolify deploys the `release`
+# branch with this file; MariaDB is a separate Coolify resource. Domains (app and admin host,
+# both → api:8000) and the Traefik routing are configured in Coolify, not here.
+# Values come from Coolify environment variables (M5). Never set FAMAPP_DEV here.
+
+x-backend: &backend
+  build:
+    context: ..
+    dockerfile: backend/Dockerfile
+  restart: unless-stopped
+  environment:
+    DATABASE_URL: ${DATABASE_URL}
+    MASTER_KEY: ${MASTER_KEY}
+    SETUP_TOKEN: ${SETUP_TOKEN}
+    CF_ACCESS_TEAM_DOMAIN: ${CF_ACCESS_TEAM_DOMAIN}
+    CF_ACCESS_AUD: ${CF_ACCESS_AUD}
+
+services:
+  api:
+    <<: *backend
+    expose:
+      - "8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      start_period: 30s
+      retries: 6
+
+  worker:
+    <<: *backend
+    command: ["python", "-m", "app.worker"]

@@ -13,10 +13,11 @@ from datetime import UTC, datetime
 
 import pytest
 from app.clock import FakeClock
+from app.config import load_settings
 from app.db.base import Base
 from app.db.dialects import is_mariadb
 from app.db.session import make_engine, make_session_factory
-from sqlalchemy import Engine
+from sqlalchemy import Engine, MetaData
 from sqlalchemy.engine import make_url
 from sqlalchemy.orm import Session
 
@@ -53,16 +54,52 @@ def database_url(tmp_path) -> str:
     return MARIADB_URL or f"sqlite:///{tmp_path / 'test.db'}"
 
 
+def _drop_everything(engine: Engine) -> None:
+    """MariaDB is shared by all tests: remove every table, incl. alembic_version."""
+    metadata = MetaData()
+    metadata.reflect(engine)
+    metadata.drop_all(engine)
+
+
 @pytest.fixture
-def engine(database_url) -> Iterator[Engine]:
+def bare_engine(database_url) -> Iterator[Engine]:
+    """An engine on an empty database (no tables)."""
     engine = make_engine(database_url)
-    Base.metadata.create_all(engine)
+    if MARIADB_URL:
+        _drop_everything(engine)
     try:
         yield engine
     finally:
         if MARIADB_URL:
-            Base.metadata.drop_all(engine)
+            _drop_everything(engine)
         engine.dispose()
+
+
+@pytest.fixture
+def engine(bare_engine) -> Engine:
+    Base.metadata.create_all(bare_engine)
+    return bare_engine
+
+
+TEST_MASTER_KEY = "dGVzdC1tYXN0ZXIta2V5LTMyLWJ5dGVzLWxvbmchISE="  # base64 of 32 bytes, tests only
+
+
+@pytest.fixture
+def prod_settings(database_url):
+    """Production-like settings (FAMAPP_DEV off) with test values."""
+    return load_settings(
+        dev=False,
+        database_url=database_url,
+        master_key=TEST_MASTER_KEY,
+        setup_token="t" * 40,
+        cf_access_team_domain="famapp-test.cloudflareaccess.com",
+        cf_access_aud="test-aud",
+    )
+
+
+@pytest.fixture
+def dev_settings(database_url):
+    return load_settings(dev=True, database_url=database_url)
 
 
 @pytest.fixture

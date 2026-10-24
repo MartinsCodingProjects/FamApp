@@ -1,0 +1,23 @@
+/* Admin UI base styles. Semantic tokens only (tokens.generated.css), no hard-coded values. */
+body {
+  margin: 0;
+  background: var(--color-bg-app);
+  color: var(--color-text-primary);
+  font-family: system-ui, sans-serif;
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-body);
+}
+
+.admin-header {
+  padding: var(--space-control-padding-y) var(--space-screen-padding);
+  background: var(--color-bg-surface);
+}
+
+.admin-brand {
+  font-size: var(--font-size-title);
+  font-weight: var(--font-weight-title);
+}
+
+.admin-main {
+  padding: var(--space-screen-padding);
+}

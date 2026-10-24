@@ -1,3 +1,7 @@
 # Processes started by `make dev` (tools/dev.py). One per line: `name: command` (run with bash).
-# Ports: BUILDPLAN A6. 1.4 adds api, worker and admin.
+# Ports: BUILDPLAN A6 (8000 API + web, 5000 admin UI, 9101 fake FCM). DATABASE_URL unset →
+# backend/dev.db. Override ports with API_PORT, ADMIN_PORT, FAKE_FCM_PORT.
+api: cd backend && FAMAPP_DEV=1 ADMIN_DEV_PORT="${ADMIN_PORT:-5000}" uv run --quiet uvicorn app.main:create_app --factory --host 0.0.0.0 --port "${API_PORT:-8000}"
+admin: cd backend && FAMAPP_DEV=1 ADMIN_DEV_PORT="${ADMIN_PORT:-5000}" uv run --quiet uvicorn app.main:create_app --factory --host 0.0.0.0 --port "${ADMIN_PORT:-5000}"
+worker: cd backend && FAMAPP_DEV=1 uv run --quiet python -m app.worker
 fake-fcm: python3 dev/fake-fcm/server.py --port "${FAKE_FCM_PORT:-9101}"

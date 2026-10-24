@@ -198,7 +198,7 @@ Martin ticks these. An agent may tick one if it can verify the result itself (e.
   *Due before:* C1 · *Result:* signed APKs from CI
 - [ ] **M4** **Cloudflare:** DNS records for both subdomains (proxied), WAF skip rule for the app subdomain, Cloudflare Access (GitHub SSO) for the admin subdomain; note the team domain and the application's **audience (AUD) tag** (guide: `deploy/cloudflare.md`, written in 1.4)
   *Due before:* C1 · *Result:* reachability
-- [ ] **M5** **Coolify:** MariaDB resource (not public), Docker Compose resource from the repo, branch `release`, auto-deploy on push, environment variables `DATABASE_URL`, `MASTER_KEY`, `SETUP_TOKEN` (generate both randomly and store them safely), `CF_ACCESS_TEAM_DOMAIN`, `CF_ACCESS_AUD` (from M4). The resource may fail until `release` has code.
+- [ ] **M5** **Coolify:** MariaDB resource (not public), Docker Compose resource from the repo, branch `release`, auto-deploy on push, environment variables `DATABASE_URL`, `MASTER_KEY`, `SETUP_TOKEN` (generate both randomly and store them safely: `openssl rand -base64 32` and `openssl rand -hex 32`, format in `docs/spec-backend-skeleton.md`), `CF_ACCESS_TEAM_DOMAIN`, `CF_ACCESS_AUD` (from M4). The resource may fail until `release` has code.
   *Due before:* C1 · *Result:* deployment
 - [ ] **M6** On both phones allow "Install unknown apps" for the browser/file manager
   *Due before:* C1 · *Result:* APK installation
@@ -275,19 +275,19 @@ Run 1 notes M1 under Open blockers in `docs/last-session.md` if it is still miss
 
 *Acceptance (automated):* health test; `t()` passes string vectors; image builds.
 
-- [ ] 1.4.1 Configuration (Pydantic settings): `DATABASE_URL`, `MASTER_KEY`, `SETUP_TOKEN`, `CF_ACCESS_TEAM_DOMAIN`, `CF_ACCESS_AUD`, `FAMAPP_DEV`, host names; fail fast on missing values outside dev
-- [ ] 1.4.2 JSON logging with request ID; no todo content in logs
-- [ ] 1.4.3 FastAPI app factory with app/admin **host separation** (dev: admin on port 5000); no `/docs` or `/openapi.json` in production
-- [ ] 1.4.4 Alembic (`render_as_batch=True`, empty baseline) and a schema check: DB at the code's head revision or at a revision the code does not know (= newer; so the previous image keeps running after a migration, decisions section 10)
-- [ ] 1.4.5 `/api/health`: 503 until the schema check from 1.4.4 passes, 200 afterwards
-- [ ] 1.4.6 Worker entrypoint: runs migrations under the DB lock on start (skips with a warning if the DB is at a revision the code does not know), then starts the (still empty) scheduler; test: an older code version starts against a newer schema
-- [ ] 1.4.7 Cloudflare Access JWT check on the admin host (team keys fetched and cached, audience tag checked, 404 on missing/invalid; off only with `FAMAPP_DEV=1`); tests with locally signed tokens and a fake key set
-- [ ] 1.4.8 Python `t()` helper reading `shared/strings`, passing the string vectors
-- [ ] 1.4.9 Admin base template (Jinja2) using `tokens.generated.css`, htmx vendored
-- [ ] 1.4.10 Dockerfile (one non-root image for api and worker), `deploy/docker-compose.yml` (api + worker, env vars, health check)
-- [ ] 1.4.11 CI job: build the image and smoke-test it (container starts, `/api/health` returns 200)
-- [ ] 1.4.12 `deploy/cloudflare.md`: DNS, WAF skip and Access settings (input for M4)
-- [ ] **1.4 done** · PR:
+- [x] 1.4.1 Configuration (Pydantic settings): `DATABASE_URL`, `MASTER_KEY`, `SETUP_TOKEN`, `CF_ACCESS_TEAM_DOMAIN`, `CF_ACCESS_AUD`, `FAMAPP_DEV`, host names; fail fast on missing values outside dev
+- [x] 1.4.2 JSON logging with request ID; no todo content in logs
+- [x] 1.4.3 FastAPI app factory with app/admin **host separation** (dev: admin on port 5000); no `/docs` or `/openapi.json` in production
+- [x] 1.4.4 Alembic (`render_as_batch=True`, empty baseline) and a schema check: DB at the code's head revision or at a revision the code does not know (= newer; so the previous image keeps running after a migration, decisions section 10)
+- [x] 1.4.5 `/api/health`: 503 until the schema check from 1.4.4 passes, 200 afterwards
+- [x] 1.4.6 Worker entrypoint: runs migrations under the DB lock on start (skips with a warning if the DB is at a revision the code does not know), then starts the (still empty) scheduler; test: an older code version starts against a newer schema
+- [x] 1.4.7 Cloudflare Access JWT check on the admin host (team keys fetched and cached, audience tag checked, 404 on missing/invalid; off only with `FAMAPP_DEV=1`); tests with locally signed tokens and a fake key set
+- [x] 1.4.8 Python `t()` helper reading `shared/strings`, passing the string vectors
+- [x] 1.4.9 Admin base template (Jinja2) using `tokens.generated.css`, htmx vendored
+- [x] 1.4.10 Dockerfile (one non-root image for api and worker), `deploy/docker-compose.yml` (api + worker, env vars, health check)
+- [x] 1.4.11 CI job: build the image and smoke-test it (container starts, `/api/health` returns 200)
+- [x] 1.4.12 `deploy/cloudflare.md`: DNS, WAF skip and Access settings (input for M4)
+- [x] **1.4 done** · PR #8
 
 #### 1.5 Expo project and empty engine module
 

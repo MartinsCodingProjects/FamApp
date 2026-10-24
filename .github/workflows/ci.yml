@@ -111,6 +111,14 @@ jobs:
       - name: Fake FCM answers
         run: curl -sSf http://127.0.0.1:9101/fake/health
 
+  image:
+    needs: changes
+    if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.shared == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: tools/image-smoke.sh
+
   js-test:
     needs: changes
     if: needs.changes.outputs.has_app == 'true' && (needs.changes.outputs.app == 'true' || needs.changes.outputs.shared == 'true')
@@ -179,7 +187,7 @@ jobs:
 
   ci-gate:
     if: always()
-    needs: [changes, lint, tools-test, backend-sqlite, backend-mariadb, js-test, audit, apk, emulator]
+    needs: [changes, lint, tools-test, backend-sqlite, backend-mariadb, image, js-test, audit, apk, emulator]
     runs-on: ubuntu-latest
     steps:
       - name: Check job results
