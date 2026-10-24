@@ -335,10 +335,10 @@ Run 1 notes M1 under Open blockers in `docs/last-session.md` if it is still miss
 
 *Acceptance (automated):* round-trip and tampering tests.
 
-- [ ] 🚧 `pkg/1.8-secrets` 1.8.1 AES-GCM module with `MASTER_KEY` (key format, random nonce, secret name as associated data, versioned ciphertext format)
-- [ ] 1.8.2 Secret store on `secrets`: set, get, exists; values never rendered in plain text; audit log entry on change
-- [ ] 1.8.3 Tests: round-trip, tampered ciphertext/nonce, swapped associated data, wrong key, missing `MASTER_KEY`
-- [ ] **1.8 done** · PR:
+- [x] 1.8.1 AES-GCM module with `MASTER_KEY` (key format, random nonce, secret name as associated data, versioned ciphertext format)
+- [x] 1.8.2 Secret store on `secrets`: set, get, exists; values never rendered in plain text; audit log entry on change
+- [x] 1.8.3 Tests: round-trip, tampered ciphertext/nonce, swapped associated data, wrong key, missing `MASTER_KEY`
+- [x] **1.8 done** · PR #12
 
 #### 1.9 Setup wizard (minimal)
 
