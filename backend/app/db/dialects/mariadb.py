@@ -7,6 +7,7 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 
 from sqlalchemy import Engine, text
+from sqlalchemy.orm import Session
 
 
 def engine_options() -> dict:
@@ -26,3 +27,9 @@ def get_lock(engine: Engine, name: str, timeout: float) -> Iterator[bool]:
             yield True
         finally:
             conn.execute(text("SELECT RELEASE_LOCK(:name)"), {"name": name})
+
+
+def next_rev(session: Session) -> int:
+    # The UPDATE row-locks the counter until commit, so commit order equals rev order (A7, 1.7.1).
+    session.execute(text("UPDATE rev_counter SET value = LAST_INSERT_ID(value + 1) WHERE id = 1"))
+    return session.execute(text("SELECT LAST_INSERT_ID()")).scalar_one()

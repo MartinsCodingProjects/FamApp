@@ -10,7 +10,8 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
 
-from sqlalchemy import Engine, event
+from sqlalchemy import Engine, event, text
+from sqlalchemy.orm import Session
 
 
 def engine_options() -> dict:
@@ -59,3 +60,8 @@ def file_lock(engine: Engine, name: str, timeout: float) -> Iterator[bool]:
             fcntl.flock(fd, fcntl.LOCK_UN)
     finally:
         os.close(fd)
+
+
+def next_rev(session: Session) -> int:
+    # SQLite has a single writer; the UPDATE takes the write lock until the transaction ends.
+    return session.execute(text("UPDATE rev_counter SET value = value + 1 WHERE id = 1 RETURNING value")).scalar_one()

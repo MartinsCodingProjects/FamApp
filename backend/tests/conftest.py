@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 
 from app.clock import FakeClock
 from app.config import load_settings
-from app.db.base import Base
+from app.db import migrations
 from app.db.dialects import is_mariadb
 from app.db.session import make_engine, make_session_factory
 
@@ -78,7 +78,8 @@ def bare_engine(database_url) -> Iterator[Engine]:
 
 @pytest.fixture
 def engine(bare_engine) -> Engine:
-    Base.metadata.create_all(bare_engine)
+    """An engine on a database migrated to head (the real schema, incl. the rev_counter row)."""
+    migrations.upgrade(bare_engine)
     return bare_engine
 
 
