@@ -13,6 +13,7 @@ export default tseslint.config(
       "app/android/**",
       "**/.venv/**",
       ".tools/**",
+      "**/*.min.js",
     ],
   },
   js.configs.recommended,

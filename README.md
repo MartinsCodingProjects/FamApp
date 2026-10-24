@@ -521,7 +521,7 @@ famapp/
 │                           rotation, RRULE, conflicts, strings)
 ├─ tools/                   token generator (tokens.py), string/key checks (strings_check.py),
 │                           architecture checks (arch_check.py), dev process runner (dev.py),
-│                           CI helpers (ci-changes.sh, audit.sh,
+│                           CI helpers (ci-changes.sh, audit.sh, image-smoke.sh, ci/,
 │                           emulator-suite.sh), ktlint.sh, actionlint.sh, install-user-tools.sh,
 │                           session-end.sh; own uv project (pyproject.toml) with the tool tests in tests/
 ├─ dev/
@@ -540,9 +540,9 @@ famapp/
 │  │  ├─ jobs/              watchdog, series, calendar, heartbeat
 │  │  ├─ fcm/               wake-up sending, token maintenance
 │  │  └─ security/          auth, tokens, sessions, crypto, rate limits
-│  ├─ migrations/
+│  ├─ migrations/            Alembic (alembic.ini next to it)
 │  ├─ tests/
-│  └─ Dockerfile
+│  └─ Dockerfile             one image for api and worker (context: repo root, .dockerignore)
 ├─ app/                     Expo app incl. modules/famapp-engine (see 8.1) and version.json (app version, 10)
 ├─ deploy/
 │  ├─ docker-compose.yml    api + worker (MariaDB as Coolify resource)
