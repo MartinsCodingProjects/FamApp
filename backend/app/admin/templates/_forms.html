@@ -1,0 +1,24 @@
+{# Form building blocks for admin pages. Texts only via t(), styles only in admin.css. #}
+{% macro field(label_key, name, type="text", value="", autocomplete="off", extra="") %}
+  <label class="field">
+    <span class="field-label">{{ t(label_key) }}</span>
+    <input class="field-input" type="{{ type }}" name="{{ name }}" value="{{ value }}" autocomplete="{{ autocomplete }}" {{ extra }} required>
+  </label>
+{% endmacro %}
+
+{% macro form_error(key, params={}) %}
+  {% if key %}<p class="form-error" role="alert">{{ t(key, params) }}</p>{% endif %}
+{% endmacro %}
+
+{% macro submit(label_key) %}
+  <button class="button" type="submit">{{ t(label_key) }}</button>
+{% endmacro %}
+
+{% macro csrf_field(token) %}
+  <input type="hidden" name="csrf" value="{{ token }}">
+{% endmacro %}
+
+{% macro step_header(heading_key, step, steps) %}
+  <p class="caption">{{ t("admin.setup.step", current=step, total=steps) }}</p>
+  <h1 class="heading">{{ t(heading_key) }}</h1>
+{% endmacro %}

@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% from "_forms.html" import field, form_error, submit, csrf_field, step_header %}
+{% block content %}
+<section class="card">
+  {{ step_header("admin.setup.totp.heading", step, steps) }}
+  <p class="caption">{{ t("admin.setup.totp.hint") }}</p>
+  <div class="qr">{{ qr_svg | safe }}</div>
+  <p class="caption">{{ t("admin.setup.totp.secret") }} <code class="secret" data-testid="totp-secret">{{ secret }}</code></p>
+  {{ form_error(error) }}
+  <form method="post" action="/setup/totp">
+    {{ csrf_field(csrf) }}
+    {{ field("admin.field.code", "code", autocomplete="one-time-code", extra='inputmode="numeric" pattern="[0-9 ]{6,7}"') }}
+    {{ submit("admin.action.continue") }}
+  </form>
+</section>
+{% endblock %}

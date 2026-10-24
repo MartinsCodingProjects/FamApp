@@ -546,6 +546,7 @@ famapp/
 ├─ app/                     Expo app (see 8.1): app.config.js (reads branding.json, version.json),
 │                           modules/famapp-engine (engine-core, engine-android), e2e/ (Maestro flows),
 │                           version.json (app version, 10)
+├─ e2e/                     Playwright E2E (`make e2e`; CI, notebook): admin wizard, later web app
 ├─ deploy/
 │  ├─ docker-compose.yml    api + worker (MariaDB as Coolify resource)
 │  └─ cloudflare.md         DNS, WAF and Access settings

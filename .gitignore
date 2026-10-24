@@ -44,6 +44,9 @@ keystore.properties
 # Tools downloaded by tools/*.sh (ktlint)
 .tools/
 
+# E2E output (Playwright, Maestro)
+e2e-results/
+
 # Editor / System
 .DS_Store
 .idea/

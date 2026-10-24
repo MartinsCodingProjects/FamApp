@@ -28,6 +28,10 @@ export const lightColors = {
     done: "#16a34a",
     offline: "#475569",
   },
+  qr: {
+    foreground: "#000000",
+    background: "#ffffff",
+  },
 };
 
 export type ColorTokens = typeof lightColors;
@@ -59,6 +63,10 @@ export const darkColors: ColorTokens = {
     dueSoon: "#fbbf24",
     done: "#4ade80",
     offline: "#cbd5e1",
+  },
+  qr: {
+    foreground: "#000000",
+    background: "#ffffff",
   },
 };
 

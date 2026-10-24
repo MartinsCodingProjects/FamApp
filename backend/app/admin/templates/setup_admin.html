@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% from "_forms.html" import field, form_error, submit, csrf_field, step_header %}
+{% block content %}
+<section class="card">
+  {{ step_header("admin.setup.admin.heading", step, steps) }}
+  <p class="caption">{{ t("admin.setup.admin.hint", min=min_password) }}</p>
+  {{ form_error(error, {"min": min_password}) }}
+  <form method="post" action="/setup/admin">
+    {{ csrf_field(csrf) }}
+    {{ field("admin.field.name", "name", value=name or "", autocomplete="username") }}
+    {{ field("admin.field.password", "password", "password", autocomplete="new-password") }}
+    {{ field("admin.field.passwordRepeat", "password_repeat", "password", autocomplete="new-password") }}
+    {{ submit("admin.action.continue") }}
+  </form>
+</section>
+{% endblock %}

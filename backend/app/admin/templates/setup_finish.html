@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% from "_forms.html" import submit, csrf_field, step_header %}
+{% block content %}
+<section class="card">
+  {{ step_header("admin.setup.finish.heading", step, steps) }}
+  <ul class="summary">
+    <li>{{ t("admin.setup.finish.admin", name=admin.name) }}</li>
+    <li>{{ t("admin.setup.finish.user", name=user.name) }}</li>
+    <li>{{ t("admin.setup.finish.timeZone", timeZone=user.time_zone) }}</li>
+    <li>{{ t("admin.setup.finish.quietHours", start=quiet.start, end=quiet.end) }}</li>
+    <li>{{ t("admin.setup.finish.firebase", projectId=project_id) }}</li>
+  </ul>
+  <p class="caption">{{ t("admin.setup.finish.hint") }}</p>
+  <form method="post" action="/setup/finish">
+    {{ csrf_field(csrf) }}
+    {{ submit("admin.setup.finish.lock") }}
+  </form>
+</section>
+{% endblock %}
