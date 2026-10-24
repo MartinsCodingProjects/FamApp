@@ -293,7 +293,7 @@ Run 1 notes M1 under Open blockers in `docs/last-session.md` if it is still miss
 
 *Acceptance (automated):* APK builds; emulator starts the app and shows a string from `de.json`.
 
-- [ ] 1.5.1 Expo project in `app/` (**TypeScript**, SDK pinned), package name `com.cowflex.famapp`, React Navigation shell
+- [ ] 🚧 `pkg/1.5-expo-app` 1.5.1 Expo project in `app/` (**TypeScript**, SDK pinned), package name `com.cowflex.famapp`, React Navigation shell
 - [ ] 1.5.2 `branding.json` wired into the app config (name, short name, icon color)
 - [ ] 1.5.3 Config plugin folder `app/plugins/`; generated `android/` is git-ignored and only produced by prebuild
 - [ ] 1.5.4 Local module `app/modules/famapp-engine` with `engine-core` and `engine-android` folders and one trivial bridge function
