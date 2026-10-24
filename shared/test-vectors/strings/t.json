@@ -1,0 +1,49 @@
+{
+  "description": "Behavior of t(key, params) in every language (TypeScript, Kotlin, Python). Each helper loads `strings` as its string table (same format as shared/strings/de.json, locale de) and must return `expected` for every case. Param values are strings or integers; integers render as plain decimal digits.",
+  "locale": "de",
+  "strings": {
+    "test.literalBraces": "Klammern {Nicht} { count } {} {1x} bleiben",
+    "test.placeholder": "Zugestellt {time}",
+    "test.plain": "Mach ich",
+    "test.plural": {
+      "one": "{count} überfälliges Todo",
+      "other": "{count} überfällige Todos"
+    },
+    "test.pluralNoCountInOne": {
+      "one": "Ein Todo",
+      "other": "{count} Todos"
+    },
+    "test.pluralOtherOnly": {
+      "other": "{count} Mal"
+    },
+    "test.pluralWithText": {
+      "one": "Seit {time}: {count} Änderung",
+      "other": "Seit {time}: {count} Änderungen"
+    },
+    "test.repeated": "{name} und nochmal {name}",
+    "test.twoPlaceholders": "{name}: Nicht stören bis {time}"
+  },
+  "cases": [
+    { "name": "plain text", "key": "test.plain", "params": {}, "expected": "Mach ich" },
+    { "name": "plain text ignores extra params", "key": "test.plain", "params": { "time": "07:00" }, "expected": "Mach ich" },
+    { "name": "placeholder", "key": "test.placeholder", "params": { "time": "14:05" }, "expected": "Zugestellt 14:05" },
+    { "name": "two placeholders", "key": "test.twoPlaceholders", "params": { "name": "Alex", "time": "07:00" }, "expected": "Alex: Nicht stören bis 07:00" },
+    { "name": "repeated placeholder", "key": "test.repeated", "params": { "name": "A" }, "expected": "A und nochmal A" },
+    { "name": "integer param", "key": "test.placeholder", "params": { "time": 7 }, "expected": "Zugestellt 7" },
+    { "name": "missing param stays visible", "key": "test.twoPlaceholders", "params": { "name": "Alex" }, "expected": "Alex: Nicht stören bis {time}" },
+    { "name": "param value is not substituted again", "key": "test.twoPlaceholders", "params": { "name": "{time}", "time": "07:00" }, "expected": "{time}: Nicht stören bis 07:00" },
+    { "name": "braces that are no placeholder stay literal", "key": "test.literalBraces", "params": { "count": 3 }, "expected": "Klammern {Nicht} { count } {} {1x} bleiben" },
+    { "name": "plural one", "key": "test.plural", "params": { "count": 1 }, "expected": "1 überfälliges Todo" },
+    { "name": "plural zero uses other", "key": "test.plural", "params": { "count": 0 }, "expected": "0 überfällige Todos" },
+    { "name": "plural two uses other", "key": "test.plural", "params": { "count": 2 }, "expected": "2 überfällige Todos" },
+    { "name": "plural 21 uses other (German has no 'one' for 21)", "key": "test.plural", "params": { "count": 21 }, "expected": "21 überfällige Todos" },
+    { "name": "plural large count", "key": "test.plural", "params": { "count": 1000 }, "expected": "1000 überfällige Todos" },
+    { "name": "plural with more placeholders", "key": "test.pluralWithText", "params": { "count": 4, "time": "22:00" }, "expected": "Seit 22:00: 4 Änderungen" },
+    { "name": "plural one with more placeholders", "key": "test.pluralWithText", "params": { "count": 1, "time": "22:00" }, "expected": "Seit 22:00: 1 Änderung" },
+    { "name": "plural without count uses other", "key": "test.plural", "params": {}, "expected": "{count} überfällige Todos" },
+    { "name": "plural count given as string is a param, not a number", "key": "test.plural", "params": { "count": "1" }, "expected": "1 überfällige Todos" },
+    { "name": "missing plural form falls back to other", "key": "test.pluralOtherOnly", "params": { "count": 1 }, "expected": "1 Mal" },
+    { "name": "one form may omit the count", "key": "test.pluralNoCountInOne", "params": { "count": 1 }, "expected": "Ein Todo" },
+    { "name": "unknown key renders as the key", "key": "test.doesNotExist", "params": { "count": 1 }, "expected": "test.doesNotExist" }
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "app.update.available": "Update verfügbar",
+  "mode.dnd.until": "Nicht stören bis {time}",
+  "notification.overdue.title": {
+    "one": "{count} überfälliges Todo: {titles}",
+    "other": "{count} überfällige Todos: {titles}"
+  },
+  "notification.summary.changesSince": {
+    "one": "Seit {time}: {count} Änderung",
+    "other": "Seit {time}: {count} Änderungen"
+  },
+  "sync.banner.offline": "Offline – Änderungen werden gespeichert und später synchronisiert",
+  "sync.banner.pending": {
+    "one": "{count} Änderung noch nicht synchronisiert",
+    "other": "{count} Änderungen noch nicht synchronisiert"
+  },
+  "sync.banner.serverUnreachable": "Server nicht erreichbar",
+  "todo.action.claim": "Mach ich",
+  "todo.action.undoDone": "Erledigt – Rückgängig",
+  "todo.delivery.claimed": "Mach ich {time}",
+  "todo.delivery.delivered": "Zugestellt {time}",
+  "todo.marker.notSent": "Noch nicht gesendet",
+  "todo.marker.notSentUrgent": "Noch nicht gesendet – {name} wurde noch nicht benachrichtigt",
+  "todo.snooze.untilTomorrow": "Bis morgen"
+}

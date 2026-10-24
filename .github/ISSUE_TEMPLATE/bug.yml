@@ -1,0 +1,39 @@
+name: Bug report
+description: Something did not work as expected (bug loop, BUILDPLAN "Afterwards")
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        The repo is public until C3: no todo contents, names, phone numbers, IPs or tokens. Describe todos generically ("an urgent todo for both").
+  - type: textarea
+    id: happened
+    attributes:
+      label: What happened
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What was expected
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Device
+      description: Which phone or browser, app version if known (Settings → Delivery)
+    validations:
+      required: true
+  - type: input
+    id: time
+    attributes:
+      label: Approximate time
+      description: Date and time (local), so logs and delivery status can be matched
+    validations:
+      required: true
+  - type: textarea
+    id: more
+    attributes:
+      label: Anything else
+      description: Steps to reproduce, screenshots (no personal data), how often it happens

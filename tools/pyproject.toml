@@ -1,0 +1,18 @@
+[project]
+name = "famapp-tools"
+version = "0.0.0"
+description = "Repo tools: token generator, string checks (stdlib only); dev group for tests and lint"
+requires-python = ">=3.12"
+dependencies = []
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1",
+    "ruff>=0.17",
+]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

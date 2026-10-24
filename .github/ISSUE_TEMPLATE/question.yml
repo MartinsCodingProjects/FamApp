@@ -1,0 +1,40 @@
+name: Question (decision needed)
+description: An agent needs a decision from Martin (AGENTS.md section 3)
+labels: [question]
+body:
+  - type: input
+    id: subtask
+    attributes:
+      label: Sub-task
+      description: BUILDPLAN ID, marked ⏸ (e.g. 1.4.3)
+    validations:
+      required: true
+  - type: textarea
+    id: question
+    attributes:
+      label: Question
+      description: What needs deciding and why the docs do not answer it
+    validations:
+      required: true
+  - type: textarea
+    id: options
+    attributes:
+      label: Options
+      description: Each option with its consequences
+    validations:
+      required: true
+  - type: textarea
+    id: recommendation
+    attributes:
+      label: Recommendation
+    validations:
+      required: true
+  - type: dropdown
+    id: blocking
+    attributes:
+      label: Blocking
+      options:
+        - Stop and wait (session ended)
+        - Parked, work continues on independent sub-tasks
+    validations:
+      required: true
