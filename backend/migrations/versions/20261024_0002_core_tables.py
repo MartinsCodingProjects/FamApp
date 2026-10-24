@@ -247,46 +247,4 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    with op.batch_alter_table("device_tokens", schema=None) as batch_op:
-        batch_op.drop_index(batch_op.f("ix_device_tokens_device_id"))
-
-    op.drop_table("device_tokens")
-    with op.batch_alter_table("deliveries", schema=None) as batch_op:
-        batch_op.drop_index(batch_op.f("ix_deliveries_device_id"))
-
-    op.drop_table("deliveries")
-    with op.batch_alter_table("alarm_firings", schema=None) as batch_op:
-        batch_op.drop_index(batch_op.f("ix_alarm_firings_device_id"))
-
-    op.drop_table("alarm_firings")
-    with op.batch_alter_table("user_settings", schema=None) as batch_op:
-        batch_op.drop_index(batch_op.f("ix_user_settings_rev"))
-
-    op.drop_table("user_settings")
-    with op.batch_alter_table("notifications", schema=None) as batch_op:
-        batch_op.drop_index(batch_op.f("ix_notifications_user_id"))
-        batch_op.drop_index(batch_op.f("ix_notifications_rev"))
-
-    op.drop_table("notifications")
-    with op.batch_alter_table("devices", schema=None) as batch_op:
-        batch_op.drop_index(batch_op.f("ix_devices_user_id"))
-
-    op.drop_table("devices")
-    with op.batch_alter_table("users", schema=None) as batch_op:
-        batch_op.drop_index(batch_op.f("ix_users_rev"))
-
-    op.drop_table("users")
-    op.drop_table("secrets")
-    op.drop_table("rev_counter")
-    with op.batch_alter_table("job_log", schema=None) as batch_op:
-        batch_op.drop_index(batch_op.f("ix_job_log_job"))
-
-    op.drop_table("job_log")
-    with op.batch_alter_table("conflict_log", schema=None) as batch_op:
-        batch_op.drop_index(batch_op.f("ix_conflict_log_at"))
-
-    op.drop_table("conflict_log")
-    with op.batch_alter_table("audit_log", schema=None) as batch_op:
-        batch_op.drop_index(batch_op.f("ix_audit_log_at"))
-
-    op.drop_table("audit_log")
+    # Dropping a table drops its indexes; MariaDB refuses to drop an index a foreign key needs.
