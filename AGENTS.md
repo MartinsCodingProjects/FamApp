@@ -35,7 +35,7 @@ If you notice a contradiction, fix the lower-ranked document in the same PR.
 7. Mark the PR ready for review (template below), enable auto-merge. Merging into `main` happens when the required check `ci-gate` is green. **After C3** (private repo on GitHub Free, no rulesets): wait with `gh pr checks --watch` and merge only when `ci-gate` is green.
 8. In the same PR: tick the finished sub-tasks in BUILDPLAN Part B, tick the package line with the PR number once all its sub-tasks are done. Then go straight to the next sub-task.
 
-At the end of a run, follow that run's lines in BUILDPLAN Part B: Run 1 continues directly with Run 2; after Runs 2 and 4 write the checkpoint file `docs/checkpoint-cN.md` (it is the run's last package), bump `app/version.json` (`versionCode` + 1), ask Martin to move `release` (issue + note under **Needs Martin** in `docs/last-session.md`) and stop; after Run 3 ask the same but continue with Run 4. Never move `release` yourself.
+At the end of a run, follow that run's lines in BUILDPLAN Part B: after Runs 2 and 4 write the checkpoint file `docs/checkpoint-cN.md` (it is the run's last package), bump `app/version.json` (`versionCode` + 1); after Runs 2, 3 and 4 ask Martin to move `release` (issue + note under **Needs Martin** in `docs/last-session.md`). **Every run ends the session**: stop after the run's end steps and do not start the next run; Martin starts it with a new session (`/next`). Never move `release` yourself.
 
 ### Ending a session
 
@@ -56,6 +56,9 @@ Whenever you stop and wait for a new prompt (run done, blocked, context running 
 
 ### Summary
 <3–6 bullets: what was done, notable choices (link assumptions.md entries)>
+
+### Structural decisions
+<one line each with the assumptions.md entry; "none">
 
 ### Needs Martin (review / decision)
 <optional: what to review, which decision, issue links; "none">
@@ -90,16 +93,25 @@ Whenever you stop and wait for a new prompt (run done, blocked, context running 
 
 ## 3. When to stop and ask
 
-**Only** in these cases (open an issue labeled `question`, mark the sub-task ⏸ in BUILDPLAN, add it under **Open blockers** in `docs/last-session.md`, continue with independent sub-tasks if possible):
+Work on your own; nobody answers questions mid-session. In every case below: open an issue labeled `question` (options + your recommendation), mark the sub-task ⏸ in BUILDPLAN, add it under **Open blockers** in `docs/last-session.md`.
 
-1. Access, an account or a secret is missing that only Martin can create.
-2. User-visible behavior is not covered by the README or decisions.
-3. Something irreversible is about to happen: package name, signing key, a migration that deletes data, changes to `release`.
-4. CI stays red after several serious attempts, or an external service is down.
+**Stop and wait** (leave the work green and committed, end the session) when Martin must decide:
+
+1. User-visible behavior is not covered by the README or decisions.
+2. Something irreversible is about to happen: package name, signing key, channel IDs, a migration that deletes data, changes to `release`, repo settings.
+3. Going against a ✅ decision or the README.
+4. A structural decision that is hard to undo once later packages depend on it and the docs give no direction (e.g. replacing a planned library or service, changing the sync protocol contract, a new external service, cost or privacy impact, security/auth).
+
+**Park and continue** with independent sub-tasks (stop only when none are left):
+
+5. Access, an account or a secret is missing that only Martin can create.
+6. CI stays red after several serious attempts, or an external service is down.
+
+Also stop at the end of a run (section 2) and before context runs out (at a sub-task boundary).
 
 Not a reason to stop: GitHub Actions free minutes used up (only possible once the repo is private again after C3). Continue with home-server packages (backend, `engine-core`, web), batch Android changes and note it under **Open blockers**.
 
-Decide everything else yourself and record it in `docs/assumptions.md` (date, package, assumption, reason).
+Decide everything else yourself (docs first, then the simplest option that is easy to change later) and record it in `docs/assumptions.md` (date, package, assumption, reason). Mark **structural** decisions (anything later packages build on: layout beyond README 12, new dependencies or tools, data model, API or sync payload shape, test or CI infrastructure, cross-language rules) with **[structural]** and also list them in the PR description and under **Structural decisions** in `docs/last-session.md`, so Martin sees them.
 
 ---
 

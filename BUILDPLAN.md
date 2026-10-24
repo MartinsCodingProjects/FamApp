@@ -39,16 +39,11 @@ The plan is organized for **autonomous work by AI agents**. Martin only steps in
 
 ### A3. When an agent stops and asks
 
-An agent stops **only** if:
-
-1. access, an account or a secret is missing that only Martin can create,
-2. a decision is needed that changes user-visible behavior and is not covered by the README or decisions,
-3. something irreversible is about to happen (package name, a migration that deletes data, signing key, changes to `release`),
-4. CI stays red after several serious attempts, or an external service is down.
+An agent stops and asks **only** in the cases listed in `AGENTS.md` section 3. In short: it **stops and waits** when Martin must decide (user-visible behavior not covered by README or decisions; something irreversible such as package name, a migration that deletes data, signing key, changes to `release`; going against a ✅ decision; a hard-to-undo structural decision the docs give no direction on). It **parks the sub-task and continues** with independent work when access, an account or a secret is missing, or CI stays red / an external service is down. Every run also ends the session.
 
 Not a reason to stop: GitHub Actions minutes used up (only possible once the repo is private again after C3); see A6.
 
-Everything else the agent decides itself and records in `docs/assumptions.md`. Martin can review the assumptions at the next checkpoint and have them corrected.
+Everything else the agent decides itself and records in `docs/assumptions.md` (structural decisions marked **[structural]** and also reported in the PR and `docs/last-session.md`). Martin can review the assumptions at the next checkpoint and have them corrected.
 
 ### A4. Branches, deployment, secrets
 
@@ -220,7 +215,7 @@ Run 1 notes M1 under Open blockers in `docs/last-session.md` if it is still miss
 
 ### 🤖 Run 1: Foundation and backend core
 
-- [ ] **Run 1 done:** all packages ticked, CI green. No checkpoint needed; Run 2 starts directly.
+- [ ] **Run 1 done:** all packages ticked, CI green. No checkpoint needed; the session ends and Martin starts Run 2 with a new session (`/next`).
 
 #### 1.1 Repo scaffold
 
@@ -582,7 +577,7 @@ The agent provides an exact step-by-step guide in `docs/checkpoint-c1.md`.
 Open issues from C1 take priority over new packages.
 
 - [ ] **Run 3 done:** all packages ticked, CI green.
-- [ ] Agent asked Martin to move `release` to `main` and reported C2. **It does not stop** but starts Run 4 right away (C2 blocks nothing).
+- [ ] Agent asked Martin to move `release` to `main` and reported C2. The session ends; Martin starts Run 4 with a new session (`/next`) whenever he likes (C2 blocks nothing).
 
 - [ ] **3.0** Break 3.1–3.13 into sub-tasks in this file (same format as Runs 1 and 2)
 - [ ] **3.1** Spec `docs/spec-todos.md`, test vectors for levels (incl. `due_soon`, end-of-day downgrade of explicit urgent via `urgent_downgrade_at`, also for "both"), quiet hours per weekday, **modes** (effective mode, manual end, schedule, `dnd` catch-up), per-user intervals, nag window, overdue slots, snooze (2 Std./Bis morgen, combined), nag times, rotation, RRULE, conflicts; edge cases: level boundaries (exactly 1 / 4 weeks), the "interval" of calendar-rule series for relative thresholds; display keys for batched activity, quiet-hours catch-up without summary and `dnd` catch-up (added to README 3.5) · PR:
