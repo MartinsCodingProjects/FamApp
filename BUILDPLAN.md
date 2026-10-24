@@ -183,7 +183,7 @@ C0 contains **only** what Run 1 cannot start without. Everything else Martin doe
 Not needed: subdomains are decided (`docs/decisions.md`); the display name is open but not blocking, so 1.1 uses a placeholder in `branding.json` and records it in `docs/assumptions.md`.
 
 - [x] **C0.1a** Create GitHub repo
-- [ ] **C0.1b** GitHub repo: **make it public** (until C3), enable auto-merge, protect `main` via a **ruleset** (require PR with **0 required approvals**, since agents open PRs under Martin's account and nobody else can approve; required status check `ci-gate`, entered by name; it does not exist until the first PR)
+- [x] **C0.1b** GitHub repo: **make it public** (until C3), enable auto-merge, protect `main` via a **ruleset** (require PR with **0 required approvals**, since agents open PRs under Martin's account and nobody else can approve; required status check `ci-gate`, entered by name; it does not exist until the first PR)
   *Blocks:* 1.2 CI incl. emulator job needs free minutes; auto-merge needs a required check.
 - [x] **C0.2** In the code-server container: `gh` logged in with a token of Martin's account (fine-grained, limited to this repo; `docs/decisions.md` section 10) that can push and open PRs: Contents, Pull requests, Issues, **Workflows** (to push `.github/workflows/`) and Actions (read/write)
   *Blocks:* every package needs PRs; 1.2 needs to push workflows and read CI runs.
@@ -673,7 +673,7 @@ Issues from C2 take priority.
 - [ ] C3.5 Full pass through the hardware test matrix (list in the checkpoint document)
 - [ ] C3.6 **Coolify DB backups switched on**
 - [ ] C3.7 Quick guide gone through with his wife; observation job switched off
-- [ ] C3.8 **GitHub repo made private again** (Settings → General → Danger Zone); signing secrets moved to repo secrets and the release workflow switched (`docs/release-signing.md`); the agent rule "merge only when `ci-gate` is green" applies from now on (A4); Actions usage and the minute-saving rules in A6 checked
+- [ ] C3.8 **GitHub repo made private again** (Settings → General → Danger Zone); signing secrets moved to repo secrets and the release workflow switched (`docs/release-signing.md`); the agent rule "merge only when `ci-gate` is green" applies from now on (A4); Actions usage and the minute-saving rules in A6 checked. **Going private on Free silently switches off** (nothing to undo by hand, but know it): the `main` ruleset (still listed, no longer enforced, incl. its squash-only rule), the Environment `release` with its required reviewer, secret-scanning push protection, and auto-merge (agents wait for `ci-gate` instead). Check that Settings → General → Pull Requests allows **only squash merging**, so squash-only survives without the ruleset.
 - [ ] **MVP done:** two weeks of daily use without a lost notification
 
 ---
