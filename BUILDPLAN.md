@@ -159,9 +159,9 @@ Rules:
 
 ### Overview
 
-- [ ] 👤 C0 preparation (blocks Run 1)
+- [x] 👤 C0 preparation (blocks Run 1)
 - [ ] 👤 M-tasks (Martin, in parallel, each due before the step that needs it)
-- [ ] 🤖 Run 1: Foundation and backend core
+- [x] 🤖 Run 1: Foundation and backend core
 - [ ] 🤖 Run 2: Engine, push and delivery
 - [ ] 👤 C1 first deployment
 - [ ] 🤖 Run 3: Todos, nagging, series
@@ -215,7 +215,7 @@ Run 1 notes M1 under Open blockers in `docs/last-session.md` if it is still miss
 
 ### 🤖 Run 1: Foundation and backend core
 
-- [ ] **Run 1 done:** all packages ticked, CI green. No checkpoint needed; the session ends and Martin starts Run 2 with a new session (`/next`).
+- [x] **Run 1 done:** all packages ticked, CI green. No checkpoint needed; the session ends and Martin starts Run 2 with a new session (`/next`).
 
 #### 1.1 Repo scaffold
 
