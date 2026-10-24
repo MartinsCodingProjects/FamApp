@@ -36,7 +36,7 @@ test-backend:
 
 # Skipped until the Expo project exists (1.5).
 test-js:
-	@if [ -f app/package.json ]; then cd app && npm ci --no-fund --no-audit && npm test; \
+	@if [ -f app/package.json ]; then cd app && npm ci --no-fund --no-audit && npm test && npm run typecheck; \
 	else echo "test-js: no Expo project yet (1.5), nothing to run"; fi
 
 ## lint: Ruff, ESLint, ktlint, token staleness, string checks, architecture checks, actionlint
@@ -72,12 +72,13 @@ tokens:
 e2e:
 	@echo "make e2e: not built yet, added in package 1.9.7 (wizard E2E)"
 
-## apk: CI only (no Android SDK on the home server); debug-signed APK
+## apk: CI only (no Android SDK on the home server). Release build (JS bundled) signed with the
+## debug key of the Expo template; real signing only in release.yml
 apk:
 	@if [ ! -f app/package.json ]; then echo "make apk: no Expo project yet (1.5)"; exit 1; fi
 	@if [ -z "$${ANDROID_HOME:-}" ]; then echo "make apk: runs in CI only (needs the Android SDK)"; exit 1; fi
 	cd app && npm ci --no-fund --no-audit && npx expo prebuild --platform android --no-install
-	cd app/android && ./gradlew --no-daemon assembleDebug
+	cd app/android && ./gradlew --no-daemon assembleRelease
 
 ## audit: pip-audit and npm audit (fail levels in tools/audit.sh)
 audit:

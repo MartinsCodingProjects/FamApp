@@ -2,8 +2,8 @@ from datetime import timedelta
 
 import jwt
 import pytest
-from app.security.cf_access import AccessVerifier
 
+from app.security.cf_access import AccessVerifier
 from tests.cf_keys import AUD, TEAM, FakeTeam
 
 

@@ -1,6 +1,6 @@
 import pytest
-from app.config import ConfigError, load_settings
 
+from app.config import ConfigError, load_settings
 from tests.conftest import TEST_MASTER_KEY
 
 VALID = {

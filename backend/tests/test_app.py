@@ -4,12 +4,12 @@ import json
 import logging
 
 import pytest
-from app.db import migrations
-from app.main import create_app
-from app.security.cf_access import AccessVerifier
 from fastapi.testclient import TestClient
 from sqlalchemy import MetaData, Table
 
+from app.db import migrations
+from app.main import create_app
+from app.security.cf_access import AccessVerifier
 from tests.cf_keys import AUD, TEAM, FakeTeam
 
 APP = "famapp.cowflex.com"

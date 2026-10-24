@@ -1,0 +1,7 @@
+{
+  "platforms": ["android"],
+  "android": {
+    "path": "engine-android",
+    "modules": ["com.cowflex.famapp.engine.FamappEngineModule"]
+  }
+}

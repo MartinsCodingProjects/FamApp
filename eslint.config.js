@@ -25,4 +25,14 @@ export default tseslint.config(
       globals: { ...globals.node },
     },
   },
+  {
+    // Expo/Metro config files are CommonJS (app/package.json has no "type": "module").
+    files: ["app/*.config.js"],
+    languageOptions: { sourceType: "commonjs" },
+    rules: { "@typescript-eslint/no-require-imports": "off" },
+  },
+  {
+    files: ["**/__tests__/**", "**/*.test.{ts,tsx}"],
+    languageOptions: { globals: { ...globals.jest } },
+  },
 );

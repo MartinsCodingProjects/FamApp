@@ -12,14 +12,15 @@ from collections.abc import Iterator
 from datetime import UTC, datetime
 
 import pytest
+from sqlalchemy import Engine, MetaData
+from sqlalchemy.engine import make_url
+from sqlalchemy.orm import Session
+
 from app.clock import FakeClock
 from app.config import load_settings
 from app.db.base import Base
 from app.db.dialects import is_mariadb
 from app.db.session import make_engine, make_session_factory
-from sqlalchemy import Engine, MetaData
-from sqlalchemy.engine import make_url
-from sqlalchemy.orm import Session
 
 # A fixed, unremarkable instant; tests move it with clock.set()/clock.advance().
 DEFAULT_NOW = datetime(2026, 1, 15, 9, 0, tzinfo=UTC)

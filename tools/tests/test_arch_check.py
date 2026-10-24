@@ -1,7 +1,8 @@
 from pathlib import Path
 
-import arch_check
 import pytest
+
+import arch_check
 from conftest import REPO
 
 

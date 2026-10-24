@@ -1,7 +1,12 @@
 # Ruff config for all Python in the repo (tools/, backend/ from 1.4, dev/ fakes).
 target-version = "py312"
 line-length = 120
+src = ["backend", "tools", "tools/tests"]
 extend-exclude = [".tools", "node_modules"]
 
 [lint]
 select = ["E", "F", "W", "I", "UP", "B", "SIM", "RUF"]
+
+# `app` is the backend package (backend/app), not the Expo folder at the repo root.
+[lint.isort]
+known-first-party = ["app", "tests", "conftest"]

@@ -5,6 +5,7 @@ import urllib.error
 import urllib.request
 
 import pytest
+
 from conftest import REPO
 
 spec = importlib.util.spec_from_file_location("fake_fcm", REPO / "dev/fake-fcm/server.py")

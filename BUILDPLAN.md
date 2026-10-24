@@ -293,17 +293,17 @@ Run 1 notes M1 under Open blockers in `docs/last-session.md` if it is still miss
 
 *Acceptance (automated):* APK builds; emulator starts the app and shows a string from `de.json`.
 
-- [ ] 1.5.1 Expo project in `app/` (**TypeScript**, SDK pinned), package name `com.cowflex.famapp`, React Navigation shell
-- [ ] 1.5.2 `branding.json` wired into the app config (name, short name, icon color)
-- [ ] 1.5.3 Config plugin folder `app/plugins/`; generated `android/` is git-ignored and only produced by prebuild
-- [ ] 1.5.4 Local module `app/modules/famapp-engine` with `engine-core` and `engine-android` folders and one trivial bridge function
-- [ ] 1.5.5 Gradle step copying `de.json` into the engine assets
-- [ ] 1.5.6 TS `t()` helper (`app/i18n/`) passing the string vectors (Jest)
-- [ ] 1.5.7 ThemeProvider (`app/theme/`) reading the generated tokens, light/dark
-- [ ] 1.5.8 Start screen showing a string from `de.json` via `t()`
-- [ ] 1.5.9 APK job from 1.2.8 builds the real app
-- [ ] 1.5.10 Emulator E2E: the app starts and shows the string (E2E tool choice recorded in `docs/assumptions.md`)
-- [ ] **1.5 done** · PR:
+- [x] 1.5.1 Expo project in `app/` (**TypeScript**, SDK pinned), package name `com.cowflex.famapp`, React Navigation shell
+- [x] 1.5.2 `branding.json` wired into the app config (name, short name, icon color)
+- [x] 1.5.3 Config plugin folder `app/plugins/`; generated `android/` is git-ignored and only produced by prebuild
+- [x] 1.5.4 Local module `app/modules/famapp-engine` with `engine-core` and `engine-android` folders and one trivial bridge function
+- [x] 1.5.5 Gradle step copying `de.json` into the engine assets
+- [x] 1.5.6 TS `t()` helper (`app/i18n/`) passing the string vectors (Jest)
+- [x] 1.5.7 ThemeProvider (`app/theme/`) reading the generated tokens, light/dark
+- [x] 1.5.8 Start screen showing a string from `de.json` via `t()`
+- [x] 1.5.9 APK job from 1.2.8 builds the real app
+- [x] 1.5.10 Emulator E2E: the app starts and shows the string (E2E tool choice recorded in `docs/assumptions.md`)
+- [x] **1.5 done** · PR #9
 
 #### 1.6 Sync spec `docs/spec-sync.md`
 

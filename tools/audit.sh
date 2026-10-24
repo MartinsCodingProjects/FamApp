@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Dependency audits (BUILDPLAN 1.2.6). Fail levels (docs/assumptions.md):
-#   pip-audit: any known vulnerability; npm audit: high or critical.
+#   pip-audit: any known vulnerability; npm audit: high or critical, minus the dated
+#   exceptions in tools/audit-allowlist.txt.
 # Covers every uv project (tools/, backend/) and npm lockfile (root, app/) that exists.
 set -euo pipefail
 
@@ -20,7 +21,8 @@ done
 for dir in . app; do
   [ -f "$dir/package-lock.json" ] || continue
   echo "npm audit: $dir"
-  (cd "$dir" && npm audit --audit-level=high) || status=1
+  (cd "$dir" && npm audit --json || true) > "$tmp/npm-audit.json"
+  python3 tools/npm_audit_gate.py "$tmp/npm-audit.json" tools/audit-allowlist.txt || status=1
 done
 
 exit "$status"

@@ -3,11 +3,11 @@
 import logging
 import threading
 
-from app.db import migrations
-from app.db.migrations import SchemaState
 from sqlalchemy import MetaData, Table
 
 from app import worker
+from app.db import migrations
+from app.db.migrations import SchemaState
 
 
 def test_worker_migrates_then_stops(dev_settings, bare_engine):
