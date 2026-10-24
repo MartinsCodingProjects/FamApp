@@ -56,7 +56,7 @@ def run(processes: list[tuple[str, str]], cwd: Path) -> int:
 
     for name, command in processes:
         child = subprocess.Popen(
-            ["bash", "-c", f"exec {command}"],
+            ["bash", "-c", command],
             cwd=cwd,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
