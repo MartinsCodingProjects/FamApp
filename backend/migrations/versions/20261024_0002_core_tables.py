@@ -248,3 +248,15 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     # Dropping a table drops its indexes; MariaDB refuses to drop an index a foreign key needs.
+    op.drop_table("device_tokens")
+    op.drop_table("deliveries")
+    op.drop_table("alarm_firings")
+    op.drop_table("user_settings")
+    op.drop_table("notifications")
+    op.drop_table("devices")
+    op.drop_table("users")
+    op.drop_table("secrets")
+    op.drop_table("rev_counter")
+    op.drop_table("job_log")
+    op.drop_table("conflict_log")
+    op.drop_table("audit_log")
