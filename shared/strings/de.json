@@ -57,6 +57,7 @@
     "one": "Seit {time}: {count} Änderung",
     "other": "Seit {time}: {count} Änderungen"
   },
+  "notification.test.title": "Testbenachrichtigung",
   "sync.banner.offline": "Offline – Änderungen werden gespeichert und später synchronisiert",
   "sync.banner.pending": {
     "one": "{count} Änderung noch nicht synchronisiert",

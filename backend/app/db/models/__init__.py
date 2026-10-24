@@ -6,6 +6,7 @@ from app.db.models.logs import AuditLog, ConflictLog, JobLog
 from app.db.models.notifications import AlarmFiring, Delivery, Notification
 from app.db.models.pairing import PairingCode
 from app.db.models.secrets import Secret
+from app.db.models.sync import ProcessedOp
 from app.db.models.system import AdminSession, SystemSetting
 from app.db.models.users import User, UserSettings
 
@@ -20,6 +21,7 @@ __all__ = [
     "JobLog",
     "Notification",
     "PairingCode",
+    "ProcessedOp",
     "RevCounter",
     "Secret",
     "SyncedMixin",
