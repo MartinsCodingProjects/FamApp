@@ -357,7 +357,7 @@ Run 1 notes M1 under Open blockers in `docs/last-session.md` if it is still miss
 
 *Acceptance (automated):* tests: lost refresh response + retry, weeks offline, real token theft locks; spoofed `CF-Connecting-IP` from a non-Cloudflare address is ignored.
 
-- [ ] 1.10.1 Pairing codes: one-time, valid 10 min, stored hashed, bound to one user; created via admin CLI for now (admin UI page in 2.11, on a paired device in 1.10.10 / 2.6.7)
+- [ ] 🚧 `pkg/1.10-device-auth` 1.10.1 Pairing codes: one-time, valid 10 min, stored hashed, bound to one user; created via admin CLI for now (admin UI page in 2.11, on a paired device in 1.10.10 / 2.6.7)
 - [ ] 1.10.2 Pairing endpoint: creates the device, returns refresh + access token
 - [ ] 1.10.3 Access token (15 min) and the auth dependency for app endpoints
 - [ ] 1.10.4 Refresh rotation with the **generous reuse rule** (decisions section 3): previous token valid until the successor is used; an old token after that locks the device
