@@ -356,8 +356,8 @@ app/                      Expo app (TypeScript)
 │  ├─ repo.native.ts      → Kotlin engine                     [Android]
 │  └─ repo.web.ts         → REST API                          [browser]
 ├─ plugins/               Expo config plugins (manifest, receivers, permissions, FCM service)
-└─ modules/famapp-engine/     local Expo module (Kotlin)
-   ├─ engine-core/        pure Kotlin, no Android:
+└─ modules/famapp-engine/     local Expo module (Kotlin; expo-module.config.json points Android at engine-android/)
+   ├─ engine-core/        pure Kotlin, no Android (sources also compiled into engine-android):
    │                      planner, levels, quiet hours, nag times, sync and conflict logic
    └─ engine-android/     thin Android layer:
       ├─ db/              Room: mirror tables, outbox, sync state
