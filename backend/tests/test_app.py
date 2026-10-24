@@ -72,15 +72,18 @@ def test_health_unreachable_db(prod_settings, clock, tmp_path):
     assert response.status_code == 503 and response.json()["schema"] == "unreachable"
 
 
-def test_admin_host_needs_cloudflare_access(prod_client, team, clock):
+def test_admin_host_needs_cloudflare_access(prod_client, prod_settings, team, clock):
+    migrate(prod_settings).dispose()
     assert get(prod_client, "/", ADMIN).status_code == 404
     assert get(prod_client, "/", ADMIN, **{"Cf-Access-Jwt-Assertion": "garbage"}).status_code == 404
     other_aud = team.token(clock, aud="another-app")
     assert get(prod_client, "/", ADMIN, **{"Cf-Access-Jwt-Assertion": other_aud}).status_code == 404
-    response = get(prod_client, "/", ADMIN, **{"Cf-Access-Jwt-Assertion": team.token(clock)})
+    response = get(prod_client, "/setup", ADMIN, **{"Cf-Access-Jwt-Assertion": team.token(clock)})
     assert response.status_code == 200 and '<html lang="de">' in response.text
     # Host normalization: case and port
-    response = get(prod_client, "/", "FAMAPP-ADMIN.cowflex.com:443", **{"Cf-Access-Jwt-Assertion": team.token(clock)})
+    response = get(
+        prod_client, "/setup", "FAMAPP-ADMIN.cowflex.com:443", **{"Cf-Access-Jwt-Assertion": team.token(clock)}
+    )
     assert response.status_code == 200
 
 
@@ -106,19 +109,20 @@ def test_no_api_docs_in_production(prod_client, team, clock, path):
     assert get(prod_client, path, ADMIN, **{"Cf-Access-Jwt-Assertion": team.token(clock)}).status_code == 404
 
 
-def test_dev_mode_admin_on_admin_port_without_jwt(dev_settings, clock, bare_engine):
+def test_dev_mode_admin_on_admin_port_without_jwt(dev_settings, clock, engine):
     settings = dev_settings.model_copy(update={"admin_dev_port": 80})  # TestClient's server port
     with TestClient(create_app(settings, clock)) as client:
-        assert client.get("/").status_code == 200
+        assert client.get("/setup").status_code == 200
         assert client.get("/api/health").status_code == 404
     with TestClient(create_app(dev_settings, clock)) as client:
         assert client.get("/api/health").status_code in (200, 503)
         assert client.get("/docs").status_code == 200
 
 
-def test_admin_static_files(prod_client, team, clock):
+def test_admin_static_files(prod_client, prod_settings, team, clock):
+    migrate(prod_settings).dispose()
     jwt_header = {"Cf-Access-Jwt-Assertion": team.token(clock)}
-    page = get(prod_client, "/", ADMIN, **jwt_header).text
+    page = get(prod_client, "/setup", ADMIN, **jwt_header).text
     assert "tokens.generated.css" in page and "htmx.min.js" in page and "FamApp Admin" in page
     css = get(prod_client, "/static/tokens.generated.css", ADMIN, **jwt_header)
     assert css.status_code == 200 and "--color-state-urgent" in css.text

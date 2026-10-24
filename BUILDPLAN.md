@@ -344,14 +344,14 @@ Run 1 notes M1 under Open blockers in `docs/last-session.md` if it is still miss
 
 *Acceptance (automated):* E2E test of the wizard against the dev DB.
 
-- [ ] 1.9.1 Wizard state and access: only with `SETUP_TOKEN` (constant-time compare, rate limited), unreachable after lock
-- [ ] 1.9.2 Step admin account: password (Argon2id) + TOTP enrolment with confirmation code
-- [ ] 1.9.3 Step Firebase service account: upload, validate JSON, store encrypted (the FCM dry-run check follows in 2.8)
-- [ ] 1.9.4 Step second account: name, time zone, default times
-- [ ] 1.9.5 Lock the wizard; admin login with password + TOTP
-- [ ] 1.9.6 All texts in `de.json`, templates use semantic tokens only
-- [ ] 1.9.7 E2E test of the full wizard flow against the dev DB (`make e2e`)
-- [ ] **1.9 done** · PR:
+- [x] 1.9.1 Wizard state and access: only with `SETUP_TOKEN` (constant-time compare, rate limited), unreachable after lock
+- [x] 1.9.2 Step admin account: password (Argon2id) + TOTP enrolment with confirmation code
+- [x] 1.9.3 Step Firebase service account: upload, validate JSON, store encrypted (the FCM dry-run check follows in 2.8)
+- [x] 1.9.4 Step second account: name, time zone, default times
+- [x] 1.9.5 Lock the wizard; admin login with password + TOTP
+- [x] 1.9.6 All texts in `de.json`, templates use semantic tokens only
+- [x] 1.9.7 E2E test of the full wizard flow against the dev DB (`make e2e`)
+- [x] **1.9 done** · PR #13
 
 #### 1.10 Device auth
 

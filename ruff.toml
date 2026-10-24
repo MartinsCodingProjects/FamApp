@@ -10,3 +10,7 @@ select = ["E", "F", "W", "I", "UP", "B", "SIM", "RUF"]
 # `app` is the backend package (backend/app), not the Expo folder at the repo root.
 [lint.isort]
 known-first-party = ["app", "tests", "conftest"]
+
+# FastAPI dependencies and form fields are declared as argument defaults by design.
+[lint.flake8-bugbear]
+extend-immutable-calls = ["fastapi.Depends", "fastapi.Form", "fastapi.File", "fastapi.Query", "fastapi.Header"]

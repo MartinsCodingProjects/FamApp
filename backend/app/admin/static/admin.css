@@ -21,3 +21,87 @@ body {
 .admin-main {
   padding: var(--space-screen-padding);
 }
+
+.card {
+  max-width: 32rem;
+  margin: 0 auto;
+  padding: var(--space-card-padding);
+  background: var(--color-bg-surface);
+  border-radius: var(--radius-card);
+}
+
+.heading {
+  margin: 0 0 var(--space-card-gap);
+  font-size: var(--font-size-heading);
+  font-weight: var(--font-weight-title);
+}
+
+.caption {
+  margin: 0 0 var(--space-card-gap);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-label);
+}
+
+.field {
+  display: block;
+  margin-bottom: var(--space-card-gap);
+}
+
+.field-label {
+  display: block;
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-label);
+}
+
+.field-input {
+  box-sizing: border-box;
+  width: 100%;
+  padding: var(--space-control-padding-y) var(--space-control-padding-x);
+  background: var(--color-bg-subtle);
+  color: var(--color-text-primary);
+  border: none;
+  border-radius: var(--radius-control);
+  font-size: var(--font-size-body);
+}
+
+.button {
+  padding: var(--space-control-padding-y) var(--space-control-padding-x);
+  background: var(--color-accent-default);
+  color: var(--color-text-on-accent);
+  border: none;
+  border-radius: var(--radius-control);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-label);
+  cursor: pointer;
+}
+
+.button:active {
+  background: var(--color-accent-pressed);
+}
+
+.form-error {
+  color: var(--color-state-urgent);
+  font-size: var(--font-size-label);
+}
+
+.qr {
+  margin-bottom: var(--space-card-gap);
+}
+
+/* Dark on light in both themes, so phones can scan it. */
+.qr-code {
+  background: var(--color-qr-background);
+}
+
+.qr-line {
+  stroke: var(--color-qr-foreground);
+}
+
+.secret {
+  font-size: var(--font-size-label);
+  word-break: break-all;
+}
+
+.summary {
+  padding-left: var(--space-screen-padding);
+}

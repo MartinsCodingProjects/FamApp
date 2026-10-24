@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% from "_forms.html" import field, form_error, submit, csrf_field, step_header %}
+{% block content %}
+<section class="card">
+  {{ step_header("admin.setup.user.heading", step, steps) }}
+  <p class="caption">{{ t("admin.setup.user.hint") }}</p>
+  {{ form_error(error) }}
+  <form method="post" action="/setup/user">
+    {{ csrf_field(csrf) }}
+    {{ field("admin.field.name", "name", value=name or "") }}
+    <label class="field">
+      <span class="field-label">{{ t("admin.field.timeZone") }}</span>
+      <select class="field-input" name="time_zone">
+        {% for zone in time_zones %}<option value="{{ zone }}" {% if zone == time_zone %}selected{% endif %}>{{ zone }}</option>{% endfor %}
+      </select>
+    </label>
+    {{ field("admin.field.quietStart", "quiet_start", "time", value=quiet_start) }}
+    {{ field("admin.field.quietEnd", "quiet_end", "time", value=quiet_end) }}
+    {{ submit("admin.action.continue") }}
+  </form>
+</section>
+{% endblock %}

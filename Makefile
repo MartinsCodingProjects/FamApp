@@ -68,9 +68,9 @@ lint-workflows:
 tokens:
 	$(TOOLS_PY) tools/tokens.py
 
-## e2e: Playwright against a local instance
+## e2e: Playwright against a local instance (needs a browser: CI or notebook, not the home server)
 e2e:
-	@echo "make e2e: not built yet, added in package 1.9.7 (wizard E2E)"
+	npx --no-install playwright test -c e2e/playwright.config.ts
 
 ## apk: CI only (no Android SDK on the home server). Release build (JS bundled) signed with the
 ## debug key of the Expo template; real signing only in release.yml

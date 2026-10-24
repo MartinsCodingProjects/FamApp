@@ -18,4 +18,6 @@
     <color name="color_state_due_soon">#d97706</color>
     <color name="color_state_done">#16a34a</color>
     <color name="color_state_offline">#475569</color>
+    <color name="color_qr_foreground">#000000</color>
+    <color name="color_qr_background">#ffffff</color>
 </resources>

@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import JSON, ForeignKey, String, Uuid
+from sqlalchemy import JSON, BigInteger, ForeignKey, Integer, String, Uuid
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -24,6 +24,11 @@ class User(SyncedMixin, Base):
     role: Mapped[str] = mapped_column(String(20), nullable=False, default="user")  # 'admin' | 'user'
     time_zone: Mapped[str] = mapped_column(String(64), nullable=False, default="Europe/Berlin")
     password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    # TOTP secret lives encrypted in `secrets` as user.<id>.totp (spec-setup-wizard.md)
+    totp_confirmed_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
+    totp_last_step: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    failed_logins: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    locked_until: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
 
 
 class UserSettings(SyncedMixin, Base):

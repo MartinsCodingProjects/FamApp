@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% from "_forms.html" import submit, csrf_field %}
+{% block content %}
+<section class="card">
+  <h1 class="heading">{{ t("admin.home.heading") }}</h1>
+  <p data-testid="signed-in">{{ t("admin.home.signedIn", name=user.name) }}</p>
+  <form method="post" action="/logout">
+    {{ csrf_field(csrf) }}
+    {{ submit("admin.action.logout") }}
+  </form>
+</section>
+{% endblock %}

@@ -16,7 +16,7 @@ else
     [ -n "$path" ] || continue
     case "$path" in
       .github/*) backend=true app=true shared=true tools=true docs=true ;;
-      backend/* | deploy/* | docker-compose*.yml) backend=true ;;
+      backend/* | deploy/* | docker-compose*.yml | e2e/*) backend=true ;;
       app/* | branding.json) app=true ;;
       shared/*) shared=true ;;
       tools/* | dev/* | Makefile | package.json | package-lock.json | ruff.toml | eslint.config.js | .editorconfig | .gitignore) tools=true ;;

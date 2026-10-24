@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% from "_forms.html" import field, form_error, submit %}
+{% block content %}
+<section class="card">
+  <h1 class="heading">{{ t("admin.login.heading") }}</h1>
+  {{ form_error(error) }}
+  <form method="post" action="/login">
+    {{ field("admin.field.name", "name", value=name or "", autocomplete="username") }}
+    {{ field("admin.field.password", "password", "password", autocomplete="current-password") }}
+    {{ field("admin.field.code", "code", autocomplete="one-time-code", extra='inputmode="numeric"') }}
+    {{ submit("admin.action.login") }}
+  </form>
+</section>
+{% endblock %}

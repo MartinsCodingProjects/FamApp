@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% from "_forms.html" import field, form_error, submit %}
+{% block content %}
+<section class="card">
+  <h1 class="heading">{{ t("admin.setup.title") }}</h1>
+  <p class="caption">{{ t("admin.setup.token.hint") }}</p>
+  {{ form_error(error) }}
+  <form method="post" action="/setup">
+    {{ field("admin.setup.token.label", "token", "password") }}
+    {{ submit("admin.action.continue") }}
+  </form>
+</section>
+{% endblock %}
