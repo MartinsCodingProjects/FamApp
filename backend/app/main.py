@@ -22,13 +22,14 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 
 from app.admin import auth as admin_auth
 from app.admin import setup as admin_setup
-from app.api import health
+from app.api import devices, errors, health
 from app.clock import Clock, SystemClock
 from app.config import Settings, get_settings
 from app.db.session import make_engine, make_session_factory
 from app.log import request_id_var, setup_logging
 from app.security.cf_access import HEADER as CF_HEADER
 from app.security.cf_access import AccessVerifier
+from app.security.client_ip import networks
 from app.security.ratelimit import RateLimiter
 
 log = logging.getLogger("app.access")
@@ -60,7 +61,11 @@ def _fastapi(ctx: AppContext) -> FastAPI:
 
 def build_app_surface(ctx: AppContext) -> FastAPI:
     app = _fastapi(ctx)
+    errors.install(app)
+    app.state.limiters = devices.limiters(ctx.clock)
+    app.state.trusted_proxies = networks(ctx.settings.trusted_proxies)
     app.include_router(health.router)
+    app.include_router(devices.router)
     return app
 
 
@@ -68,6 +73,8 @@ def build_admin_surface(ctx: AppContext, verifier: AccessVerifier | None) -> ASG
     app = _fastapi(ctx)
     app.mount("/static", StaticFiles(directory=ADMIN_STATIC), name="static")
     app.state.setup_limiter = RateLimiter(5, timedelta(minutes=15), ctx.clock)
+    app.state.login_limiter = RateLimiter(10, timedelta(minutes=15), ctx.clock)
+    app.state.trusted_proxies = networks(ctx.settings.trusted_proxies)
     app.include_router(admin_setup.router)
     app.include_router(admin_auth.router)
     if ctx.settings.dev:

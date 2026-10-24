@@ -357,17 +357,17 @@ Run 1 notes M1 under Open blockers in `docs/last-session.md` if it is still miss
 
 *Acceptance (automated):* tests: lost refresh response + retry, weeks offline, real token theft locks; spoofed `CF-Connecting-IP` from a non-Cloudflare address is ignored.
 
-- [ ] 🚧 `pkg/1.10-device-auth` 1.10.1 Pairing codes: one-time, valid 10 min, stored hashed, bound to one user; created via admin CLI for now (admin UI page in 2.11, on a paired device in 1.10.10 / 2.6.7)
-- [ ] 1.10.2 Pairing endpoint: creates the device, returns refresh + access token
-- [ ] 1.10.3 Access token (15 min) and the auth dependency for app endpoints
-- [ ] 1.10.4 Refresh rotation with the **generous reuse rule** (decisions section 3): previous token valid until the successor is used; an old token after that locks the device
-- [ ] 1.10.5 Revocation: lock a single device
-- [ ] 1.10.6 Client-IP rule: trust only Traefik, rightmost `X-Forwarded-For`, Cloudflare ranges → `CF-Connecting-IP`
-- [ ] 1.10.7 Rate limits and lockout on pairing, refresh and login, keyed by client IP
-- [ ] 1.10.8 Audit log for pairing, rotation anomalies, revocation
-- [ ] 1.10.9 Acceptance tests: lost response + retry, weeks offline, theft locks, spoofed header ignored
-- [ ] 1.10.10 Endpoint for a paired device to create a pairing code for its own user (README 9; rate limited, audit log)
-- [ ] **1.10 done** · PR:
+- [x] 1.10.1 Pairing codes: one-time, valid 10 min, stored hashed, bound to one user; created via admin CLI for now (admin UI page in 2.11, on a paired device in 1.10.10 / 2.6.7)
+- [x] 1.10.2 Pairing endpoint: creates the device, returns refresh + access token
+- [x] 1.10.3 Access token (15 min) and the auth dependency for app endpoints
+- [x] 1.10.4 Refresh rotation with the **generous reuse rule** (decisions section 3): previous token valid until the successor is used; an old token after that locks the device
+- [x] 1.10.5 Revocation: lock a single device
+- [x] 1.10.6 Client-IP rule: trust only Traefik, rightmost `X-Forwarded-For`, Cloudflare ranges → `CF-Connecting-IP`
+- [x] 1.10.7 Rate limits and lockout on pairing, refresh and login, keyed by client IP
+- [x] 1.10.8 Audit log for pairing, rotation anomalies, revocation
+- [x] 1.10.9 Acceptance tests: lost response + retry, weeks offline, theft locks, spoofed header ignored
+- [x] 1.10.10 Endpoint for a paired device to create a pairing code for its own user (README 9; rate limited, audit log)
+- [x] **1.10 done** · PR #14
 
 #### 1.11 Sync endpoints
 

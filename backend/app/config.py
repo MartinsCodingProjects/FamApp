@@ -37,6 +37,16 @@ class Settings(BaseSettings):
     admin_host: str = Field("famapp-admin.cowflex.com", alias="ADMIN_HOST")
     admin_dev_port: int = Field(5000, alias="ADMIN_DEV_PORT")
     log_level: str = Field("INFO", alias="LOG_LEVEL")
+    # Comma-separated CIDRs of the reverse proxy (Traefik); see app/security/client_ip.py.
+    trusted_proxies_csv: str | None = Field(None, alias="TRUSTED_PROXIES")
+
+    @property
+    def trusted_proxies(self) -> tuple[str, ...]:
+        from app.security.client_ip import DEFAULT_TRUSTED_PROXIES
+
+        if not self.trusted_proxies_csv:
+            return DEFAULT_TRUSTED_PROXIES
+        return tuple(c.strip() for c in self.trusted_proxies_csv.split(",") if c.strip())
 
     def resolved(self) -> Settings:
         """Apply dev defaults, then check required values. Raises ConfigError."""
@@ -64,6 +74,12 @@ class Settings(BaseSettings):
         domain = self.cf_access_team_domain
         if domain and ("://" in domain or "/" in domain):
             problems.append("CF_ACCESS_TEAM_DOMAIN must be a bare host name like <team>.cloudflareaccess.com")
+        try:
+            from app.security.client_ip import networks
+
+            networks(self.trusted_proxies)
+        except ValueError:
+            problems.append("TRUSTED_PROXIES must be comma-separated CIDRs")
         if problems:
             raise ConfigError("; ".join(problems))
 

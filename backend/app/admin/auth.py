@@ -14,6 +14,7 @@ from app.admin.common import audit, check_csrf, cookie_options, ctx, db, redirec
 from app.admin.setup import secrets, totp_secret_name
 from app.db.models import AdminSession, User
 from app.security import passwords, totp
+from app.security.client_ip import client_ip
 
 router = APIRouter()
 COOKIE = "famapp_admin"
@@ -80,11 +81,18 @@ def login_submit(
         return redirect("/setup")
     clock = ctx(request).clock
     now = clock.now()
+    limiter = request.app.state.login_limiter
+    ip = client_ip(request)
+    if limiter.blocked(ip):
+        audit(session, request, "rate_limited", action="admin_login")
+        session.commit()
+        return render(request, "login.html", 429, error="admin.error.rateLimited", name=name)
     user = session.scalars(
         select(User).where(func.lower(User.name) == name.strip().lower(), User.deleted_at.is_(None))
     ).one_or_none()
 
     def fail(reason: str):
+        limiter.hit(ip)
         if user is not None:
             user.failed_logins += 1
             if user.failed_logins >= MAX_FAILURES:
