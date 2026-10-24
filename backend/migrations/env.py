@@ -2,6 +2,7 @@
 
 from alembic import context
 
+from app.db import models  # noqa: F401  (registers all tables)
 from app.db.base import Base
 from app.db.session import make_engine
 

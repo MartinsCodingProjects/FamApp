@@ -322,14 +322,14 @@ Run 1 notes M1 under Open blockers in `docs/last-session.md` if it is still miss
 
 *Acceptance (automated):* migration up/down on SQLite and MariaDB in CI.
 
-- [ ] 1.7.1 `rev_counter` and `next_rev()` per dialect (MariaDB `LAST_INSERT_ID(value+1)`, SQLite `UPDATE … RETURNING`), always called inside the writing transaction so the counter row lock makes commit order equal `rev` order (otherwise a delta sync can skip a row committed late); concurrency test marked `mariadb`
-- [ ] 1.7.2 Common columns for synced tables (`id`, `rev`, `created_at`, `updated_at`, `deleted_at`)
-- [ ] 1.7.3 `users` (incl. time zone), `user_settings` (base fields incl. quiet hours per weekday, needed by 2.9; 3.2 extends them)
-- [ ] 1.7.4 `devices` (incl. app version, last sync, `device_status`), `device_tokens`
-- [ ] 1.7.5 `notifications`, `deliveries`, `alarm_firings` (the engine sends `alarm_firing` ops from 2.5.7 on)
-- [ ] 1.7.6 `secrets`, `audit_log`, `conflict_log`, `job_log`
-- [ ] 1.7.7 Up/down test for every migration on both databases (down is never run in production); check that flags destructive operations (A7: additive only)
-- [ ] **1.7 done** · PR:
+- [x] 1.7.1 `rev_counter` and `next_rev()` per dialect (MariaDB `LAST_INSERT_ID(value+1)`, SQLite `UPDATE … RETURNING`), always called inside the writing transaction so the counter row lock makes commit order equal `rev` order (otherwise a delta sync can skip a row committed late); concurrency test marked `mariadb`
+- [x] 1.7.2 Common columns for synced tables (`id`, `rev`, `created_at`, `updated_at`, `deleted_at`)
+- [x] 1.7.3 `users` (incl. time zone), `user_settings` (base fields incl. quiet hours per weekday, needed by 2.9; 3.2 extends them)
+- [x] 1.7.4 `devices` (incl. app version, last sync, `device_status`), `device_tokens`
+- [x] 1.7.5 `notifications`, `deliveries`, `alarm_firings` (the engine sends `alarm_firing` ops from 2.5.7 on)
+- [x] 1.7.6 `secrets`, `audit_log`, `conflict_log`, `job_log`
+- [x] 1.7.7 Up/down test for every migration on both databases (down is never run in production); check that flags destructive operations (A7: additive only)
+- [x] **1.7 done** · PR #11
 
 #### 1.8 Secret encryption
 

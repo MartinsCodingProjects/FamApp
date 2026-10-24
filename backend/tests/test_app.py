@@ -59,7 +59,8 @@ def test_health_follows_the_schema(prod_client, prod_settings):
 
 def test_health_behind_is_not_ready(prod_client, prod_settings, monkeypatch):
     migrate(prod_settings).dispose()
-    monkeypatch.setattr(migrations, "code_revisions", lambda: ("0002", {"0001", "0002"}))
+    known = migrations.code_revisions()[1]
+    monkeypatch.setattr(migrations, "code_revisions", lambda: ("9999", {*known, "9999"}))
     response = get(prod_client, "/api/health", APP)
     assert response.status_code == 503 and response.json()["schema"] == "behind"
 
