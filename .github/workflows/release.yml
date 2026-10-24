@@ -32,10 +32,12 @@ jobs:
           name="$(jq -er '.versionName' app/version.json)"
           code="$(jq -er '.versionCode' app/version.json)"
           [[ "$code" =~ ^[0-9]+$ ]] || { echo "versionCode must be a positive integer, got $code"; exit 1; }
-          echo "name=$name" >> "$GITHUB_OUTPUT"
-          echo "code=$code" >> "$GITHUB_OUTPUT"
-          echo "tag=app-v$name-$code" >> "$GITHUB_OUTPUT"
-          echo "display=$(jq -er '.displayName' branding.json)" >> "$GITHUB_OUTPUT"
+          {
+            echo "name=$name"
+            echo "code=$code"
+            echo "tag=app-v$name-$code"
+            echo "display=$(jq -er '.displayName' branding.json)"
+          } >> "$GITHUB_OUTPUT"
 
       - name: versionCode must be higher than the last release's
         env:
@@ -82,8 +84,9 @@ jobs:
           done
           keystore="$RUNNER_TEMP/release.keystore"
           echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$keystore"
-          build_tools="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)"
-          unsigned="$(ls app/android/app/build/outputs/apk/release/*.apk | head -1)"
+          build_tools="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)"
+          unsigned="$(find app/android/app/build/outputs/apk/release -name '*.apk' | head -1)"
+          [ -n "$unsigned" ] || { echo "::error::no release APK found"; exit 1; }
           # The Expo template signs release builds with the debug key; drop that v1 signature,
           # apksigner replaces the v2/v3 blocks.
           cp "$unsigned" "$RUNNER_TEMP/stripped.apk"
