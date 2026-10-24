@@ -259,7 +259,7 @@ Run 1 notes M1 under Open blockers in `docs/last-session.md` if it is still miss
 
 *Acceptance (automated):* `make dev` starts on the home server; fake FCM accepts calls.
 
-- [ ] 1.3.1 `make setup`: `uv`, pinned Python, `fnm` + pinned Node, JDK and `make` via `tools/install-user-tools.sh`; user space only, idempotent, no root
+- [ ] 🚧 `pkg/1.3-dev-env` 1.3.1 `make setup`: `uv`, pinned Python, `fnm` + pinned Node, JDK and `make` via `tools/install-user-tools.sh`; user space only, idempotent, no root
 - [ ] 1.3.2 Backend project: `backend/pyproject.toml`, `uv` lockfile with pinned dependencies, pytest config incl. the `mariadb` marker
 - [ ] 1.3.3 Time provider: `Clock` interface, system clock, controllable fake clock (set "now", fast-forward) as a pytest fixture
 - [ ] 1.3.4 Database layer: engine/session from `DATABASE_URL` (default `sqlite:///./dev.db`), custom UTC `DateTime` type, portable types only (A7)
