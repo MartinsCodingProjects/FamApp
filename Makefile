@@ -13,15 +13,16 @@ TOOLS_PY := uv run --project tools python
 help:
 	@echo "make setup | dev | test | lint | tokens | e2e | apk | audit"
 
-## setup: install tools in user space (1.3.1 adds the backend, app and engine toolchains)
+## setup: install tools in user space (make, JDK, fnm + Node, Python, project dependencies); idempotent
 setup:
 	tools/install-user-tools.sh
 	uv sync --project tools
+	uv sync --project backend
 	npm ci --no-fund --no-audit
 
-## dev: start backend, worker, admin, fakes locally
+## dev: start backend, worker, admin, fakes locally (process list: dev/Procfile)
 dev:
-	@echo "make dev: not built yet, added in package 1.3 (dev environment)"
+	$(TOOLS_PY) tools/dev.py
 
 ## test: all locally possible tests
 test: test-tools test-backend test-js
@@ -29,10 +30,9 @@ test: test-tools test-backend test-js
 test-tools:
 	cd tools && uv run pytest -q
 
-# Placeholder until the backend project exists (1.3.2). DATABASE_URL selects SQLite or MariaDB (A7).
+# DATABASE_URL selects SQLite (default) or MariaDB (A7).
 test-backend:
-	@if [ -f backend/pyproject.toml ]; then cd backend && uv run pytest -q; \
-	else echo "test-backend: no backend project yet (1.3.2), nothing to run"; fi
+	cd backend && uv run pytest -q
 
 # Skipped until the Expo project exists (1.5).
 test-js:

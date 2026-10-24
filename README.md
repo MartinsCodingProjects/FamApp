@@ -504,7 +504,8 @@ famapp/
 ├─ package.json             repo-wide JS tooling (ESLint, flat config in eslint.config.js)
 ├─ ruff.toml                Ruff config for all Python
 ├─ .editorconfig            also read by ktlint
-├─ docker-compose.dev.yml   local environment for machines with Docker (notebook, CI)
+├─ docker-compose.dev.yml   local environment for machines with Docker (notebook, CI): MariaDB, fakes
+├─ .node-version, .python-version   pinned Node and Python (fnm, uv, CI)
 ├─ docs/
 │  ├─ decisions.md          decision log with rationale
 │  ├─ assumptions.md        decisions made by agents
@@ -519,16 +520,19 @@ famapp/
 │  └─ test-vectors/         shared test cases (levels, quiet hours, modes, nag times, planner,
 │                           rotation, RRULE, conflicts, strings)
 ├─ tools/                   token generator (tokens.py), string/key checks (strings_check.py),
-│                           architecture checks (arch_check.py), CI helpers (ci-changes.sh, audit.sh,
+│                           architecture checks (arch_check.py), dev process runner (dev.py),
+│                           CI helpers (ci-changes.sh, audit.sh,
 │                           emulator-suite.sh), ktlint.sh, actionlint.sh, install-user-tools.sh,
 │                           session-end.sh; own uv project (pyproject.toml) with the tool tests in tests/
 ├─ dev/
-│  ├─ fake-fcm/
+│  ├─ Procfile              processes started by `make dev` (tools/dev.py)
+│  ├─ fake-fcm/             FCM HTTP v1 fake, port 9101 (records sends, error injection)
 │  └─ fake-gcal/            with fixtures
 ├─ backend/
 │  ├─ app/
 │  │  ├─ api/               app and web endpoints
 │  │  ├─ admin/             admin UI, setup wizard, templates
+│  │  ├─ clock.py           time provider (Clock, SystemClock, FakeClock)
 │  │  ├─ db/                session, types, next_rev(), locks, dialects/ (SQLite, MariaDB)
 │  │  ├─ sync/              delta, push, conflict logic
 │  │  ├─ domain/            todos, levels, series, notifications, quiet hours

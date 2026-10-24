@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
-# Installs the tools the home server lacks into ~/.local, without root (BUILDPLAN A6):
+# Installs the toolchain into ~/.local, without root (BUILDPLAN A6, 1.3.1). Idempotent.
 #   - GNU make (the container image has none; extracted from the Ubuntu package)
-#   - a JDK (Temurin 21, needed by ktlint and later engine-core)
-# Idempotent. Package 1.3.1 folds this into `make setup`; it has to run once before
-# make exists, so it stays a plain script.
+#   - a JDK (Temurin 21, for ktlint and engine-core; SDKMAN needs unzip, which is missing)
+#   - fnm + the Node version pinned in .node-version
+#   - the Python version pinned in .python-version (via uv)
+# `make setup` runs it; it also works before make exists.
 set -euo pipefail
 
 prefix="${HOME}/.local"
@@ -29,7 +30,29 @@ if ! command -v java >/dev/null 2>&1 && [ ! -x "$jdk_dir/bin/java" ]; then
   ln -sf "$jdk_dir/bin/java" "$bin/java"
 fi
 
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+fnm_dir="${prefix}/share/fnm"
+if [ ! -x "$bin/fnm" ]; then
+  echo "installing fnm into $bin"
+  curl -sSfL "https://github.com/Schniz/fnm/releases/download/v1.39.0/fnm-linux.zip" -o "$tmp/fnm.zip"
+  python3 -c 'import sys, zipfile; zipfile.ZipFile(sys.argv[1]).extractall(sys.argv[2])' "$tmp/fnm.zip" "$tmp/fnm"
+  install -m 755 "$tmp/fnm/fnm" "$bin/fnm"
+fi
+node_version="$(cat "$root/.node-version")"
+if ! FNM_DIR="$fnm_dir" "$bin/fnm" list | grep -q "v$node_version"; then
+  echo "installing Node $node_version via fnm"
+  FNM_DIR="$fnm_dir" "$bin/fnm" install "$node_version"
+fi
+
+if ! command -v uv >/dev/null 2>&1; then
+  echo "installing uv into $bin"
+  curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR="$bin" UV_NO_MODIFY_PATH=1 sh
+fi
+uv python install --quiet "$(cat "$root/.python-version")"
+
 case ":$PATH:" in
   *":$bin:"*) ;;
-  *) echo "add $bin to PATH, e.g.: echo 'export PATH=\"\$HOME/.local/bin:\$PATH\"' >> ~/.bashrc" ;;
+  *) echo "note: put $bin on PATH (make, java, fnm live there)" ;;
 esac
+echo "note: activate the pinned Node with: eval \"\$(FNM_DIR=$fnm_dir fnm env)\" && fnm use"

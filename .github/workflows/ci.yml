@@ -55,7 +55,7 @@ jobs:
       - uses: astral-sh/setup-uv@v10.3.2
       - uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version-file: .node-version
           cache: npm
       - uses: actions/setup-java@v6
         with:
@@ -97,26 +97,19 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v10.3.2
-      # Started with `docker run` instead of `services:` because service containers cannot take
-      # server arguments, and the collation must be set on the server (A7).
-      - name: Start MariaDB
-        run: |
-          docker run -d --name mariadb -p 3306:3306 \
-            -e MARIADB_ROOT_PASSWORD=root -e MARIADB_DATABASE=famapp_test \
-            -e MARIADB_USER=famapp -e MARIADB_PASSWORD=famapp \
-            mariadb:11.4 --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
-          for _ in $(seq 1 60); do
-            if docker exec mariadb healthcheck.sh --connect --innodb_initialized 2>/dev/null; then break; fi
-            sleep 2
-          done
-          docker exec mariadb healthcheck.sh --connect --innodb_initialized
+      # docker-compose.dev.yml instead of `services:`: service containers cannot take server
+      # arguments, and the collation must be set on the server (A7). Also tests the compose file.
+      - name: Start MariaDB and fake FCM (docker-compose.dev.yml)
+        run: docker compose -f docker-compose.dev.yml up -d --wait
       - name: Check charset and collation
         run: |
-          result="$(docker exec mariadb mariadb -ufamapp -pfamapp famapp_test -N -e \
+          result="$(docker compose -f docker-compose.dev.yml exec -T mariadb mariadb -ufamapp -pfamapp famapp_test -N -e \
             'SELECT @@character_set_database, @@collation_database')"
           echo "$result"
           [ "$(echo "$result" | tr -s '[:space:]' ' ' | xargs)" = "utf8mb4 utf8mb4_unicode_ci" ]
       - run: make test-backend
+      - name: Fake FCM answers
+        run: curl -sSf http://127.0.0.1:9101/fake/health
 
   js-test:
     needs: changes
@@ -126,7 +119,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version-file: .node-version
           cache: npm
           cache-dependency-path: app/package-lock.json
       - run: make test-js
@@ -138,7 +131,7 @@ jobs:
       - uses: astral-sh/setup-uv@v10.3.2
       - uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version-file: .node-version
       - run: make audit
 
   apk:
@@ -149,7 +142,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version-file: .node-version
           cache: npm
           cache-dependency-path: app/package-lock.json
       - uses: actions/setup-java@v6
