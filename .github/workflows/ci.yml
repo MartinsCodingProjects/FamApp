@@ -1,0 +1,35 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Placeholder until 1.1.4/1.1.5 add the Makefile and lint tools; 1.2.2 switches to `make lint`.
+      - name: Lint
+        run: |
+          if [ -f Makefile ]; then make lint; else echo "No Makefile yet (added in 1.1.4)"; fi
+
+  ci-gate:
+    if: always()
+    needs: [lint]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check job results
+        run: |
+          echo '${{ toJSON(needs) }}'
+          if [ "${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}" = "true" ]; then
+            exit 1
+          fi
