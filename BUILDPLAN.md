@@ -221,7 +221,7 @@ Run 1 notes M1 under Open blockers in `docs/last-session.md` if it is still miss
 
 *Acceptance (automated):* `make lint` and `make tokens` run; checks fail on a deliberately broken key or stale generated file.
 
-- [ ] 🚧 `pkg/1.1-repo-scaffold` 1.1.1 Directory skeleton per README 12 (`backend/`, `app/`, `shared/`, `tools/`, `dev/`, `deploy/`, `docs/`), `.gitignore` (`dev.db`, build output, key/keystore patterns), `.editorconfig`
+- [ ] 🚧 `pkg/1.1-scaffold-rest` 1.1.1 Directory skeleton per README 12 (`backend/`, `app/`, `shared/`, `tools/`, `dev/`, `deploy/`, `docs/`), `.gitignore` (`dev.db`, build output, key/keystore patterns), `.editorconfig`
 - [x] 1.1.2 Minimal CI workflow `.github/workflows/ci.yml` with a lint job and the `ci-gate` job, so this first PR can satisfy the required check (1.2 extends it); confirms C0.3
 - [ ] 1.1.3 `branding.json` with a placeholder display name, short name, icon color; placeholder recorded in `docs/assumptions.md`
 - [ ] 1.1.4 `Makefile` with all targets from `AGENTS.md` (`setup`, `dev`, `test`, `lint`, `tokens`, `e2e`, `apk`); targets that are not built yet print which package adds them
