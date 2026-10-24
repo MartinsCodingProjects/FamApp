@@ -81,7 +81,7 @@ Most engine logic is therefore developed in the fast local loop; only the Androi
 **Home server setup (done by agent package 1.3, without root):**
 
 - Database: an SQLite file in the working directory (not committed), nothing to install.
-- Python via `uv`, Node via `fnm`, JDK via SDKMAN (only for `engine-core`).
+- Python via `uv`, Node via `fnm`, JDK (Temurin tarball, for ktlint and `engine-core`) and GNU `make` via `tools/install-user-tools.sh` into `~/.local` (the image has no `make` and no `unzip`, which SDKMAN needs).
 - Gradle with `org.gradle.jvmargs=-Xmx1536m`; daemon stops after 10 min idle.
 - No Android SDK on the home server.
 
@@ -259,7 +259,7 @@ Run 1 notes M1 under Open blockers in `docs/last-session.md` if it is still miss
 
 *Acceptance (automated):* `make dev` starts on the home server; fake FCM accepts calls.
 
-- [ ] 1.3.1 `make setup`: `uv`, pinned Python, `fnm` + pinned Node, optional JDK via SDKMAN; user space only, idempotent, no root
+- [ ] 1.3.1 `make setup`: `uv`, pinned Python, `fnm` + pinned Node, JDK and `make` via `tools/install-user-tools.sh`; user space only, idempotent, no root
 - [ ] 1.3.2 Backend project: `backend/pyproject.toml`, `uv` lockfile with pinned dependencies, pytest config incl. the `mariadb` marker
 - [ ] 1.3.3 Time provider: `Clock` interface, system clock, controllable fake clock (set "now", fast-forward) as a pytest fixture
 - [ ] 1.3.4 Database layer: engine/session from `DATABASE_URL` (default `sqlite:///./dev.db`), custom UTC `DateTime` type, portable types only (A7)
