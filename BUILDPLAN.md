@@ -252,8 +252,8 @@ Run 1 notes M1 under Open blockers in `docs/last-session.md` if it is still miss
 - [x] 1.2.10 `docs/release-signing.md`: how Martin creates the key, backs it up twice and adds the secrets (input for M3), and the C3 switch to repo secrets (input for C3.8)
 - [x] 1.2.11 Emulator job (KVM on standard runners), empty suite, only when `app/` changed
 - [x] 1.2.12 `ci-gate` job: `if: always()`, needs every job, fails on `failure`/`cancelled`, accepts `skipped`
-- [ ] 1.2.13 Acceptance: a docs-only PR skips the path-filtered jobs and still merges; a full run on the empty project is green (both PR links noted in this PR)
-- [ ] **1.2 done** · PR:
+- [x] 1.2.13 Acceptance: a docs-only PR skips the path-filtered jobs and still merges; a full run on the empty project is green (both PR links noted in this PR) · full run: PR #5; docs-only: PR #6
+- [x] **1.2 done** · PR #5, #6
 
 #### 1.3 Dev environment on the home server
 
