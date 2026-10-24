@@ -185,9 +185,9 @@ Not needed: subdomains are decided (`docs/decisions.md`); the display name is op
 - [x] **C0.1a** Create GitHub repo
 - [x] **C0.1b** GitHub repo: **make it public** (until C3), enable auto-merge, protect `main` via a **ruleset** (require PR with **0 required approvals**, since agents open PRs under Martin's account and nobody else can approve; required status check `ci-gate`, entered by name; it does not exist until the first PR)
   *Blocks:* 1.2 CI incl. emulator job needs free minutes; auto-merge needs a required check.
-- [ ] **C0.2** In the code-server container: `gh` logged in with a token of Martin's account (fine-grained, limited to this repo; `docs/decisions.md` section 10) that can push and open PRs: Contents, Pull requests, Issues, **Workflows** (to push `.github/workflows/`) and Actions (read/write)
+- [x] **C0.2** In the code-server container: `gh` logged in with a token of Martin's account (fine-grained, limited to this repo; `docs/decisions.md` section 10) that can push and open PRs: Contents, Pull requests, Issues, **Workflows** (to push `.github/workflows/`) and Actions (read/write)
   *Blocks:* every package needs PRs; 1.2 needs to push workflows and read CI runs.
-- [ ] **C0.3** (agent) Confirmed: the agent pushed a branch with a workflow file, opened a PR and read its CI run. Done as part of 1.1.
+- [x] **C0.3** (agent) Confirmed: the agent pushed a branch with a workflow file, opened a PR and read its CI run. Done as part of 1.1.
 
 **Done when:** C0.1b and C0.2 are ticked; then Run 1 starts. C0.3 is ticked by the agent in 1.1.2 and is not a precondition.
 
@@ -226,8 +226,8 @@ Run 1 notes M1 under Open blockers in `docs/last-session.md` if it is still miss
 
 *Acceptance (automated):* `make lint` and `make tokens` run; checks fail on a deliberately broken key or stale generated file.
 
-- [ ] 1.1.1 Directory skeleton per README 12 (`backend/`, `app/`, `shared/`, `tools/`, `dev/`, `deploy/`, `docs/`), `.gitignore` (`dev.db`, build output, key/keystore patterns), `.editorconfig`
-- [ ] 1.1.2 Minimal CI workflow `.github/workflows/ci.yml` with a lint job and the `ci-gate` job, so this first PR can satisfy the required check (1.2 extends it); confirms C0.3
+- [ ] 🚧 `pkg/1.1-repo-scaffold` 1.1.1 Directory skeleton per README 12 (`backend/`, `app/`, `shared/`, `tools/`, `dev/`, `deploy/`, `docs/`), `.gitignore` (`dev.db`, build output, key/keystore patterns), `.editorconfig`
+- [x] 1.1.2 Minimal CI workflow `.github/workflows/ci.yml` with a lint job and the `ci-gate` job, so this first PR can satisfy the required check (1.2 extends it); confirms C0.3
 - [ ] 1.1.3 `branding.json` with a placeholder display name, short name, icon color; placeholder recorded in `docs/assumptions.md`
 - [ ] 1.1.4 `Makefile` with all targets from `AGENTS.md` (`setup`, `dev`, `test`, `lint`, `tokens`, `e2e`, `apk`); targets that are not built yet print which package adds them
 - [ ] 1.1.5 Lint configs: Ruff, ESLint (flat config), ktlint; all wired into `make lint` (install the tools in user space here; 1.3.1 folds them into `make setup`)
