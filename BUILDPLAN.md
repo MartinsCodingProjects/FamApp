@@ -275,7 +275,7 @@ Run 1 notes M1 under Open blockers in `docs/last-session.md` if it is still miss
 
 *Acceptance (automated):* health test; `t()` passes string vectors; image builds.
 
-- [ ] 1.4.1 Configuration (Pydantic settings): `DATABASE_URL`, `MASTER_KEY`, `SETUP_TOKEN`, `CF_ACCESS_TEAM_DOMAIN`, `CF_ACCESS_AUD`, `FAMAPP_DEV`, host names; fail fast on missing values outside dev
+- [ ] 🚧 `pkg/1.4-backend-skeleton` 1.4.1 Configuration (Pydantic settings): `DATABASE_URL`, `MASTER_KEY`, `SETUP_TOKEN`, `CF_ACCESS_TEAM_DOMAIN`, `CF_ACCESS_AUD`, `FAMAPP_DEV`, host names; fail fast on missing values outside dev
 - [ ] 1.4.2 JSON logging with request ID; no todo content in logs
 - [ ] 1.4.3 FastAPI app factory with app/admin **host separation** (dev: admin on port 5000); no `/docs` or `/openapi.json` in production
 - [ ] 1.4.4 Alembic (`render_as_batch=True`, empty baseline) and a schema check: DB at the code's head revision or at a revision the code does not know (= newer; so the previous image keeps running after a migration, decisions section 10)
