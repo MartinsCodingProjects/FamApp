@@ -1,0 +1,19 @@
+{
+  "name": "famapp-tooling",
+  "private": true,
+  "description": "Repo-wide JS tooling (ESLint). The Expo app gets its own package.json in app/ (1.5).",
+  "type": "module",
+  "engines": {
+    "node": ">=22.13"
+  },
+  "scripts": {
+    "lint": "eslint --max-warnings=0 ."
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.13.0",
+    "globals": "^17.13.0",
+    "typescript": "~6.0.3",
+    "typescript-eslint": "^8.72.0"
+  }
+}

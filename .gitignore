@@ -7,7 +7,8 @@ __pycache__/
 .coverage
 htmlcov/
 
-# Databases (development)
+# Databases (development; DATABASE_URL unset -> ./dev.db)
+dev.db
 *.db
 *.db-journal
 *.sqlite
@@ -17,6 +18,7 @@ node_modules/
 .expo/
 dist/
 web-build/
+.eslintcache
 
 # Android / Gradle
 .gradle/
@@ -24,6 +26,9 @@ build/
 local.properties
 *.keystore
 *.jks
+*.apk
+*.aab
+keystore.properties
 
 # Secrets – never commit
 .env
@@ -31,6 +36,13 @@ local.properties
 !.env.example
 *service-account*.json
 *-firebase-adminsdk-*.json
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Tools downloaded by tools/*.sh (ktlint)
+.tools/
 
 # Editor / System
 .DS_Store

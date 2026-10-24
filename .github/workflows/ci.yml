@@ -13,18 +13,38 @@ permissions:
   contents: read
 
 jobs:
+  # 1.2 adds change detection and the per-area jobs.
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      # Placeholder until 1.1.4/1.1.5 add the Makefile and lint tools; 1.2.2 switches to `make lint`.
-      - name: Lint
-        run: |
-          if [ -f Makefile ]; then make lint; else echo "No Makefile yet (added in 1.1.4)"; fi
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.3.2
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: actions/cache@v6
+        with:
+          path: .tools
+          key: tools-${{ hashFiles('tools/ktlint.sh') }}
+      - run: uv sync --project tools
+      - run: npm ci --no-fund --no-audit
+      - run: make lint
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.3.2
+      - run: make test
 
   ci-gate:
     if: always()
-    needs: [lint]
+    needs: [lint, test]
     runs-on: ubuntu-latest
     steps:
       - name: Check job results

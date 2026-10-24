@@ -117,13 +117,13 @@ Decide everything else yourself (docs first, then the simplest option that is ea
 Details: `BUILDPLAN.md` A6 and A7. Summary:
 
 - **Home server (here):** code-server container, < 7 GB RAM, **no Docker, no KVM, no root**, localhost is free, internet access to package registries.
-  - Python via `uv`, Node via `fnm`, JDK via SDKMAN (only for `engine-core`). **No Android SDK here.**
+  - Python via `uv`, Node via `fnm`, JDK (Temurin tarball; for ktlint and `engine-core`) and GNU `make` via `tools/install-user-tools.sh` into `~/.local` (the image has neither, and no `unzip` for SDKMAN). Put `~/.local/bin` on `PATH`. **No Android SDK here.**
   - Database: SQLite (`DATABASE_URL` unset → `sqlite:///./dev.db`).
   - Gradle: `org.gradle.jvmargs=-Xmx1536m`, daemon with a short idle timeout.
 - **GitHub Actions:** APK build, `engine-android`, Robolectric, emulator E2E, MariaDB tests, Docker image. The repo is **public until C3** (free minutes): emulator suite on every PR touching `app/`. Only `ci-gate` is a required check; use job-level conditions, not workflow-level `paths:` filters, for required jobs.
 - **Ports Martin can see in his browser:** 8000 (API + web build), 5000 (admin UI), 5173 (Expo web dev). Reserve: 3000, 4173, 5174. Internal only: e.g. 9101 fake FCM, 9102 fake Google.
 
-### Commands (Makefile, once created)
+### Commands (Makefile)
 
 | Command | Purpose |
 |---|---|
@@ -180,7 +180,7 @@ Details: `BUILDPLAN.md` A6 and A7. Summary:
 - Only base components in `app/components/` combine tokens into styles. Screens compose base components.
 
 ### UI strings (README 8.4)
-- **Single source: `shared/strings/de.json`.** Applies to app, web, engine notifications, server notifications and admin UI.
+- **Single source: `shared/strings/de.json`.** Applies to app, web, engine notifications, server notifications and admin UI. Key and plural conventions: `shared/strings/README.md`.
 - Code uses keys via `t(key, params)` only. No German string literals in code (lint enforces it).
 - Keys by area (`todo.action.done`). Counts use plural forms, never string concatenation.
 - Server-generated notifications send a key plus parameters, not text.

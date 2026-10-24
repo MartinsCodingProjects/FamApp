@@ -1,0 +1,7 @@
+# Ruff config for all Python in the repo (tools/, backend/ from 1.4, dev/ fakes).
+target-version = "py312"
+line-length = 120
+extend-exclude = [".tools", "node_modules"]
+
+[lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "RUF"]

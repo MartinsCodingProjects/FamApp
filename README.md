@@ -501,6 +501,9 @@ famapp/
 ├─ AGENTS.md                rules for AI agents (CLAUDE.md points here)
 ├─ Makefile                 setup, dev, test, lint, tokens, e2e, apk
 ├─ branding.json            display name, short name, icon color (single place)
+├─ package.json             repo-wide JS tooling (ESLint, flat config in eslint.config.js)
+├─ ruff.toml                Ruff config for all Python
+├─ .editorconfig            also read by ktlint
 ├─ docker-compose.dev.yml   local environment for machines with Docker (notebook, CI)
 ├─ docs/
 │  ├─ decisions.md          decision log with rationale
@@ -511,11 +514,13 @@ famapp/
 │  ├─ release-signing.md    signing key and secrets (input for M3)
 │  └─ checkpoint-c*.md      checkpoint checklists for Martin
 ├─ shared/
-│  ├─ strings/de.json       all user-facing text (single source, see 8.4)
+│  ├─ strings/de.json       all user-facing text (single source, see 8.4; conventions in strings/README.md)
 │  ├─ design/tokens.json    all design tokens (single source, see 8.2)
 │  └─ test-vectors/         shared test cases (levels, quiet hours, modes, nag times, planner,
 │                           rotation, RRULE, conflicts, strings)
-├─ tools/                   token generator, string/key checks, architecture checks, session-end.sh
+├─ tools/                   token generator (tokens.py), string/key checks (strings_check.py),
+│                           architecture checks, ktlint.sh, install-user-tools.sh, session-end.sh;
+│                           own uv project (pyproject.toml) with the tool tests in tests/
 ├─ dev/
 │  ├─ fake-fcm/
 │  └─ fake-gcal/            with fixtures

@@ -81,7 +81,7 @@ Most engine logic is therefore developed in the fast local loop; only the Androi
 **Home server setup (done by agent package 1.3, without root):**
 
 - Database: an SQLite file in the working directory (not committed), nothing to install.
-- Python via `uv`, Node via `fnm`, JDK via SDKMAN (only for `engine-core`).
+- Python via `uv`, Node via `fnm`, JDK (Temurin tarball, for ktlint and `engine-core`) and GNU `make` via `tools/install-user-tools.sh` into `~/.local` (the image has no `make` and no `unzip`, which SDKMAN needs).
 - Gradle with `org.gradle.jvmargs=-Xmx1536m`; daemon stops after 10 min idle.
 - No Android SDK on the home server.
 
@@ -221,20 +221,20 @@ Run 1 notes M1 under Open blockers in `docs/last-session.md` if it is still miss
 
 *Acceptance (automated):* `make lint` and `make tokens` run; checks fail on a deliberately broken key or stale generated file.
 
-- [ ] 🚧 `pkg/1.1-repo-scaffold` 1.1.1 Directory skeleton per README 12 (`backend/`, `app/`, `shared/`, `tools/`, `dev/`, `deploy/`, `docs/`), `.gitignore` (`dev.db`, build output, key/keystore patterns), `.editorconfig`
+- [x] 1.1.1 Directory skeleton per README 12 (`backend/`, `app/`, `shared/`, `tools/`, `dev/`, `deploy/`, `docs/`), `.gitignore` (`dev.db`, build output, key/keystore patterns), `.editorconfig`
 - [x] 1.1.2 Minimal CI workflow `.github/workflows/ci.yml` with a lint job and the `ci-gate` job, so this first PR can satisfy the required check (1.2 extends it); confirms C0.3
-- [ ] 1.1.3 `branding.json` with a placeholder display name, short name, icon color; placeholder recorded in `docs/assumptions.md`
-- [ ] 1.1.4 `Makefile` with all targets from `AGENTS.md` (`setup`, `dev`, `test`, `lint`, `tokens`, `e2e`, `apk`); targets that are not built yet print which package adds them
-- [ ] 1.1.5 Lint configs: Ruff, ESLint (flat config), ktlint; all wired into `make lint` (install the tools in user space here; 1.3.1 folds them into `make setup`)
-- [ ] 1.1.6 `shared/strings/de.json` with the first keys and the key naming convention (by area, plural forms) documented in a comment file or README section
-- [ ] 1.1.7 `shared/design/tokens.json`: base + semantic tokens, light/dark, initial neutral palette (incl. `color.state.urgent`, `color.state.offline`)
-- [ ] 1.1.8 Token generator in `tools/` → TS (`tokens.generated.ts`), CSS (`tokens.generated.css`), Android XML (`colors_generated.xml`); `make tokens`; a check mode that fails on stale generated files, run by `make lint`
-- [ ] 1.1.9 String checks in `tools/`: missing/unused keys, placeholder mismatch, German literals in code; run by `make lint`
-- [ ] 1.1.10 String test vectors in `shared/test-vectors/strings/` (placeholders, plurals, missing key behavior), used by the `t()` helpers in 1.4, 1.5 and 2.2
-- [ ] 1.1.11 Issue templates (bug report per the bug loop, question) and labels `bug`, `question`
-- [ ] 1.1.12 `AGENTS.md` and README section 12 match the actual layout
-- [ ] 1.1.13 Acceptance tests for the tools: a broken key, a placeholder mismatch and a stale generated file each make the check fail
-- [ ] **1.1 done** · PR:
+- [x] 1.1.3 `branding.json` with a placeholder display name, short name, icon color; placeholder recorded in `docs/assumptions.md`
+- [x] 1.1.4 `Makefile` with all targets from `AGENTS.md` (`setup`, `dev`, `test`, `lint`, `tokens`, `e2e`, `apk`); targets that are not built yet print which package adds them
+- [x] 1.1.5 Lint configs: Ruff, ESLint (flat config), ktlint; all wired into `make lint` (install the tools in user space here; 1.3.1 folds them into `make setup`)
+- [x] 1.1.6 `shared/strings/de.json` with the first keys and the key naming convention (by area, plural forms) documented in a comment file or README section
+- [x] 1.1.7 `shared/design/tokens.json`: base + semantic tokens, light/dark, initial neutral palette (incl. `color.state.urgent`, `color.state.offline`)
+- [x] 1.1.8 Token generator in `tools/` → TS (`tokens.generated.ts`), CSS (`tokens.generated.css`), Android XML (`colors_generated.xml`); `make tokens`; a check mode that fails on stale generated files, run by `make lint`
+- [x] 1.1.9 String checks in `tools/`: missing/unused keys, placeholder mismatch, German literals in code; run by `make lint`
+- [x] 1.1.10 String test vectors in `shared/test-vectors/strings/` (placeholders, plurals, missing key behavior), used by the `t()` helpers in 1.4, 1.5 and 2.2
+- [x] 1.1.11 Issue templates (bug report per the bug loop, question) and labels `bug`, `question`
+- [x] 1.1.12 `AGENTS.md` and README section 12 match the actual layout
+- [x] 1.1.13 Acceptance tests for the tools: a broken key, a placeholder mismatch and a stale generated file each make the check fail
+- [x] **1.1 done** · PR #2, #4
 
 #### 1.2 CI
 
@@ -259,7 +259,7 @@ Run 1 notes M1 under Open blockers in `docs/last-session.md` if it is still miss
 
 *Acceptance (automated):* `make dev` starts on the home server; fake FCM accepts calls.
 
-- [ ] 1.3.1 `make setup`: `uv`, pinned Python, `fnm` + pinned Node, optional JDK via SDKMAN; user space only, idempotent, no root
+- [ ] 1.3.1 `make setup`: `uv`, pinned Python, `fnm` + pinned Node, JDK and `make` via `tools/install-user-tools.sh`; user space only, idempotent, no root
 - [ ] 1.3.2 Backend project: `backend/pyproject.toml`, `uv` lockfile with pinned dependencies, pytest config incl. the `mariadb` marker
 - [ ] 1.3.3 Time provider: `Clock` interface, system clock, controllable fake clock (set "now", fast-forward) as a pytest fixture
 - [ ] 1.3.4 Database layer: engine/session from `DATABASE_URL` (default `sqlite:///./dev.db`), custom UTC `DateTime` type, portable types only (A7)
