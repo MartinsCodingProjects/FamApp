@@ -1,0 +1,6 @@
+# Known advisories accepted for a limited time (tools/audit.sh). One per line:
+#   <GHSA id>  <expires YYYY-MM-DD>  <reason>
+# An expired entry fails the audit, so each one is looked at again. Only for advisories without a
+# usable fix that do not reach shipped code; Martin reviews this list at every checkpoint.
+GHSA-86w9-cpqp-85rv  2027-01-24  node-forge (all versions) via @expo/cli code signing for EAS updates, which famapp does not use; build tooling only, not in the APK
+GHSA-mrhx-c7xc-m3w5  2027-01-24  zod 3 via @expo/cli validating local config; fix only in zod 4, which expo 58 cannot take; build tooling only
