@@ -344,7 +344,7 @@ Run 1 notes M1 under Open blockers in `docs/last-session.md` if it is still miss
 
 *Acceptance (automated):* E2E test of the wizard against the dev DB.
 
-- [ ] 1.9.1 Wizard state and access: only with `SETUP_TOKEN` (constant-time compare, rate limited), unreachable after lock
+- [ ] 🚧 `pkg/1.9-setup-wizard` 1.9.1 Wizard state and access: only with `SETUP_TOKEN` (constant-time compare, rate limited), unreachable after lock
 - [ ] 1.9.2 Step admin account: password (Argon2id) + TOTP enrolment with confirmation code
 - [ ] 1.9.3 Step Firebase service account: upload, validate JSON, store encrypted (the FCM dry-run check follows in 2.8)
 - [ ] 1.9.4 Step second account: name, time zone, default times
