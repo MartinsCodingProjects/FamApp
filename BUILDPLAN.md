@@ -309,14 +309,14 @@ Run 1 notes M1 under Open blockers in `docs/last-session.md` if it is still miss
 
 *Acceptance (automated):* file exists and covers endpoints, operations, conflicts, error cases, protocol version header, minimum/latest app version, unknown fields (a doc test checks the required sections).
 
-- [ ] 🚧 `pkg/1.6-sync-spec` 1.6.1 Endpoints, auth headers, request/response shapes (`GET /api/sync`, `POST /api/sync/push`, `POST /api/devices/me/fcm-token`)
-- [ ] 1.6.2 Delta: `since`/`limit`, ordering by `rev`, per-user visibility, tombstones, pagination
-- [ ] 1.6.3 Operations: create, change field group, change status, delete, ack, snooze, `device_status`, `alarm_firing`; op UUID and idempotency
-- [ ] 1.6.4 Conflicts: last-write-wins per field group, deletion wins, clock-skew correction, tie rule, conflict log
-- [ ] 1.6.5 Error cases: permanent rejection vs. retry, auth failures, too-old app, server errors; client behavior for each
-- [ ] 1.6.6 Versions: protocol version header, current + previous supported, minimum/latest app version, unknown fields and tables ignored
-- [ ] 1.6.7 Test scenario list used by 1.11 and 2.3; doc test for the required sections
-- [ ] **1.6 done** · PR:
+- [x] 1.6.1 Endpoints, auth headers, request/response shapes (`GET /api/sync`, `POST /api/sync/push`, `POST /api/devices/me/fcm-token`)
+- [x] 1.6.2 Delta: `since`/`limit`, ordering by `rev`, per-user visibility, tombstones, pagination
+- [x] 1.6.3 Operations: create, change field group, change status, delete, ack, snooze, `device_status`, `alarm_firing`; op UUID and idempotency
+- [x] 1.6.4 Conflicts: last-write-wins per field group, deletion wins, clock-skew correction, tie rule, conflict log
+- [x] 1.6.5 Error cases: permanent rejection vs. retry, auth failures, too-old app, server errors; client behavior for each
+- [x] 1.6.6 Versions: protocol version header, current + previous supported, minimum/latest app version, unknown fields and tables ignored
+- [x] 1.6.7 Test scenario list used by 1.11 and 2.3; doc test for the required sections
+- [x] **1.6 done** · PR #10
 
 #### 1.7 Migrations
 
