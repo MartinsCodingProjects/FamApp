@@ -9,7 +9,7 @@ export default defineConfig({
   testMatch: "*.spec.ts",
   fullyParallel: false,
   workers: 1,
-  retries: process.env.CI ? 1 : 0,
+  retries: 0, // the flow changes server state; a retry would start mid-wizard
   reporter: process.env.CI ? [["list"], ["html", { open: "never", outputFolder: "../e2e-results/html" }]] : "list",
   outputDir: "../e2e-results/artifacts",
   use: {
