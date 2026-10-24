@@ -4,6 +4,7 @@ import subprocess
 
 import pytest
 import yaml
+
 from conftest import REPO
 
 WORKFLOWS = REPO / ".github/workflows"

@@ -7,6 +7,7 @@ import json
 import re
 
 import pytest
+
 import strings_check
 from conftest import REPO
 

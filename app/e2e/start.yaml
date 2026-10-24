@@ -1,0 +1,10 @@
+# Emulator E2E (BUILDPLAN 1.5.10, Maestro): the app starts and shows a string from de.json.
+appId: com.cowflex.famapp
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible:
+      id: "start-title"
+    timeout: 60000
+- assertVisible: "Willkommen bei FamApp"

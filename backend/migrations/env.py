@@ -1,6 +1,7 @@
 """Alembic environment. render_as_batch=True so SQLite can ALTER (A7)."""
 
 from alembic import context
+
 from app.db.base import Base
 from app.db.session import make_engine
 

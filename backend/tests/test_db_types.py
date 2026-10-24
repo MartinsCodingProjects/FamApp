@@ -3,8 +3,9 @@
 from datetime import UTC, datetime, timedelta, timezone
 
 import pytest
-from app.db.types import UTCDateTime
 from sqlalchemy import Column, Integer, MetaData, Table, insert, select
+
+from app.db.types import UTCDateTime
 
 
 @pytest.fixture

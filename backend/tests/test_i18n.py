@@ -1,6 +1,7 @@
 import json
 
 import pytest
+
 from app.i18n import load_strings, render, t
 from app.paths import REPO
 

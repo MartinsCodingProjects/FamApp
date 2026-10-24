@@ -1,0 +1,37 @@
+// engine-android: thin Android layer of the engine (README 8.1). All logic lives in engine-core,
+// whose sources are compiled into this library; engine-core also builds on its own without the
+// Android SDK (2.2).
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'com.cowflex.famapp.engine'
+version = '0.1.0'
+
+def repoRoot = file("${projectDir}/../../../..")
+def generatedAssets = layout.buildDirectory.dir("generated/famapp-assets").get().asFile
+
+android {
+  namespace "com.cowflex.famapp.engine"
+  defaultConfig {
+    versionCode 1
+    versionName "0.1.0"
+  }
+  sourceSets {
+    main {
+      java.srcDirs += ["${projectDir}/../engine-core/src/main/kotlin"]
+      assets.srcDirs += [generatedAssets]
+    }
+  }
+  lintOptions {
+    abortOnError false
+  }
+}
+
+// BUILDPLAN 1.5.5: the engine renders notifications with the same strings as the UI.
+def copyFamappStrings = tasks.register("copyFamappStrings", Copy) {
+  from(new File(repoRoot, "shared/strings/de.json"))
+  into(new File(generatedAssets, "famapp/strings"))
+}
+preBuild.dependsOn(copyFamappStrings)

@@ -9,9 +9,8 @@ import sys
 import time
 import urllib.request
 
-from conftest import REPO
-
 import dev
+from conftest import REPO
 
 
 def free_port() -> int:

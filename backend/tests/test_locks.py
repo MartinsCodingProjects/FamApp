@@ -4,6 +4,7 @@ import multiprocessing
 import threading
 
 import pytest
+
 from app.db.locks import LockTimeout, named_lock
 from app.db.session import make_engine
 
