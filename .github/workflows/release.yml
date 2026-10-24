@@ -1,0 +1,107 @@
+name: release
+
+# Signed release APK (BUILDPLAN 1.2.9, docs/release-signing.md).
+# Runs only on push to `release`, which only Martin moves. There is deliberately no
+# pull_request trigger, so PRs (and forks) never reach the signing secrets. No other
+# workflow may use them.
+
+on:
+  push:
+    branches: [release]
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    # C3 switch (docs/release-signing.md): delete this line once the secrets are repo secrets.
+    environment: release
+    permissions:
+      contents: write # create the GitHub Release
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Read app version
+        id: version
+        run: |
+          name="$(jq -er '.versionName' app/version.json)"
+          code="$(jq -er '.versionCode' app/version.json)"
+          [[ "$code" =~ ^[0-9]+$ ]] || { echo "versionCode must be a positive integer, got $code"; exit 1; }
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          echo "tag=app-v$name-$code" >> "$GITHUB_OUTPUT"
+          echo "display=$(jq -er '.displayName' branding.json)" >> "$GITHUB_OUTPUT"
+
+      - name: versionCode must be higher than the last release's
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CODE: ${{ steps.version.outputs.code }}
+        run: |
+          last="$(gh release list --limit 100 --json tagName -q '.[].tagName' \
+            | sed -nE 's/^app-v.*-([0-9]+)$/\1/p' | sort -n | tail -1)"
+          echo "versionCode $CODE, last released ${last:-none}"
+          if [ -n "$last" ] && [ "$CODE" -le "$last" ]; then
+            echo "::error::app/version.json versionCode ($CODE) must be higher than the last GitHub Release ($last)"
+            exit 1
+          fi
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Build release APK
+        run: |
+          [ -f app/package.json ] || { echo "::error::no Expo project in app/ yet (1.5)"; exit 1; }
+          cd app
+          npm ci --no-fund --no-audit
+          npx expo prebuild --platform android --no-install
+          cd android
+          ./gradlew --no-daemon assembleRelease
+
+      - name: Sign APK
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          for var in ANDROID_KEYSTORE_BASE64 ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_ALIAS ANDROID_KEY_PASSWORD; do
+            [ -n "${!var}" ] || { echo "::error::secret $var is missing (docs/release-signing.md)"; exit 1; }
+          done
+          keystore="$RUNNER_TEMP/release.keystore"
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$keystore"
+          build_tools="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)"
+          unsigned="$(ls app/android/app/build/outputs/apk/release/*.apk | head -1)"
+          # The Expo template signs release builds with the debug key; drop that v1 signature,
+          # apksigner replaces the v2/v3 blocks.
+          cp "$unsigned" "$RUNNER_TEMP/stripped.apk"
+          zip -q -d "$RUNNER_TEMP/stripped.apk" 'META-INF/*.SF' 'META-INF/*.RSA' 'META-INF/*.DSA' 'META-INF/*.EC' 'META-INF/MANIFEST.MF' || true
+          "$build_tools/zipalign" -f -p 4 "$RUNNER_TEMP/stripped.apk" "$RUNNER_TEMP/aligned.apk"
+          "$build_tools/apksigner" sign \
+            --ks "$keystore" --ks-pass env:ANDROID_KEYSTORE_PASSWORD \
+            --ks-key-alias "$ANDROID_KEY_ALIAS" --key-pass env:ANDROID_KEY_PASSWORD \
+            --out "$RUNNER_TEMP/famapp-$TAG.apk" "$RUNNER_TEMP/aligned.apk"
+          "$build_tools/apksigner" verify --print-certs "$RUNNER_TEMP/famapp-$TAG.apk" | grep -i "SHA-256"
+          rm -f "$keystore"
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+          TITLE: ${{ steps.version.outputs.display }} ${{ steps.version.outputs.name }} (${{ steps.version.outputs.code }})
+        run: |
+          gh release create "$TAG" "$RUNNER_TEMP/famapp-$TAG.apk" \
+            --target "$GITHUB_SHA" --title "$TITLE" \
+            --notes "Signed release APK built from \`release\` at $GITHUB_SHA."
