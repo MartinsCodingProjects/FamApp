@@ -22,7 +22,7 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 
 from app.admin import auth as admin_auth
 from app.admin import setup as admin_setup
-from app.api import devices, errors, health
+from app.api import devices, errors, health, sync
 from app.clock import Clock, SystemClock
 from app.config import Settings, get_settings
 from app.db.session import make_engine, make_session_factory
@@ -66,6 +66,7 @@ def build_app_surface(ctx: AppContext) -> FastAPI:
     app.state.trusted_proxies = networks(ctx.settings.trusted_proxies)
     app.include_router(health.router)
     app.include_router(devices.router)
+    app.include_router(sync.router)
     return app
 
 

@@ -13,4 +13,4 @@ known-first-party = ["app", "tests", "conftest"]
 
 # FastAPI dependencies and form fields are declared as argument defaults by design.
 [lint.flake8-bugbear]
-extend-immutable-calls = ["fastapi.Depends", "fastapi.Form", "fastapi.File", "fastapi.Query", "fastapi.Header"]
+extend-immutable-calls = ["fastapi.Body", "fastapi.Depends", "fastapi.Form", "fastapi.File", "fastapi.Query", "fastapi.Header"]

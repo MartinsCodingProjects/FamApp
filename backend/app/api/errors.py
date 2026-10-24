@@ -20,12 +20,29 @@ def error_body(code: str, message: str = "") -> dict:
     return {"error": {"code": code, "message": message}}
 
 
+# The sync endpoints answer every error with the meta envelope too (spec-sync.md section 1).
+META_PATHS = ("/api/sync", "/api/devices/me/fcm-token")
+
+
+def _body(request: Request, code: str, message: str) -> dict:
+    body = error_body(code, message)
+    if request.url.path.startswith(META_PATHS):
+        from app.sync.protocol import meta
+
+        with request.app.state.ctx.session_factory() as session:
+            body = {
+                "meta": meta(session, request.app.state.ctx.clock, getattr(request.state, "protocol", None)),
+                **body,
+            }
+    return body
+
+
 def install(app: FastAPI) -> None:
     @app.exception_handler(ApiError)
-    async def _api_error(_request: Request, exc: ApiError) -> JSONResponse:
-        return JSONResponse(error_body(exc.code, exc.message), status_code=exc.status, headers=exc.headers)
+    async def _api_error(request: Request, exc: ApiError) -> JSONResponse:
+        return JSONResponse(_body(request, exc.code, exc.message), status_code=exc.status, headers=exc.headers)
 
     @app.exception_handler(RequestValidationError)
-    async def _validation(_request: Request, exc: RequestValidationError) -> JSONResponse:
+    async def _validation(request: Request, exc: RequestValidationError) -> JSONResponse:
         fields = ", ".join(".".join(str(p) for p in e["loc"][1:]) for e in exc.errors())  # names only, no values
-        return JSONResponse(error_body("validation", f"invalid fields: {fields}"), status_code=400)
+        return JSONResponse(_body(request, "validation", f"invalid fields: {fields}"), status_code=400)

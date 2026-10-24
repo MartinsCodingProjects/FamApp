@@ -22,6 +22,8 @@ from app.db import migrations
 from app.db.dialects import is_mariadb
 from app.db.session import make_engine, make_session_factory
 
+pytest_plugins = ["tests.sync_helpers"]  # fixtures sync_app, phones
+
 # A fixed, unremarkable instant; tests move it with clock.set()/clock.advance().
 DEFAULT_NOW = datetime(2026, 1, 15, 9, 0, tzinfo=UTC)
 
